@@ -30,6 +30,8 @@ theme:
 
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - codehilite
   - toc:
       permalink: true

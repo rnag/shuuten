@@ -1,15 +1,16 @@
-<!--intro-start-->
-
 <div align="center">
 <img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/refs/heads/main/img/logo.png">
 
 ## Shuuten Signal
 
-[![Build Status](https://github.com/rnag/shuuten/workflows/test/badge.svg)](https://github.com/rnag/shuuten/actions)
+[![Build Status](https://github.com/rnag/shuuten/actions/workflows/test.yml/badge.svg)](https://github.com/rnag/shuuten/actions)
 [![Latest Version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![Python Version](https://img.shields.io/pypi/pyversions/shuuten.svg)](https://pypi.python.org/pypi/shuuten)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/license/MIT)
+
 </div>
+
+<!--intro-start-->
 
 **Last-stop signals for automation failures.**
 
