@@ -1,0 +1,99 @@
+[project]
+name = "shuuten"
+version = "0.1.0"
+description = "Last-stop signals for automation failures."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+
+authors = [
+  {name = "Ritvik Nag", email = "me@ritviknag.com"}
+]
+maintainers = [
+  {name = "Ritvik Nag", email = "me@ritviknag.com"}
+]
+
+dependencies = []
+
+keywords = [
+  "automation",
+  "notifications",
+  "alerts",
+  "slack",
+  "email",
+  "aws",
+  "lambda",
+  "ecs",
+  "observability",
+  "ops",
+]
+
+classifiers = [
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 3 - Alpha",
+  # Indicate who your project is intended for
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: System :: Logging",
+  "Topic :: System :: Monitoring",
+  "Topic :: Software Development :: Libraries",
+  # Specify the Python versions you support here.
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+
+[project.optional-dependencies]
+cli = [
+    "rich",
+    "typer",
+]
+test = [
+    "pytest",  # testing
+    "pytest-cov",  # testing
+    "coverage",  # testing
+    "ruff",  # linting
+    "ty",  # checking types
+    "ipdb",  # debugging
+]
+email = ["boto3"]
+# slack = ["slack_sdk"]  # only if I decide to support Slack Web API; webhooks don't need this
+
+[project.urls]
+Homepage = "https://github.com/rnag/shuuten"
+# Documentation = "https://readthedocs.org"
+Repository = "https://github.com/rnag/shuuten.git"
+Issues = "https://github.com/rnag/shuuten/issues"
+Changelog = "https://github.com/rnag/shuuten/blob/main/CHANGELOG.md"
+
+# Consider removing this until I want a CLI-first experience
+# [project.scripts]
+# shuuten = "shuuten.cli:app"
+
+[tool.ty]
+# All rules are enabled as "error" by default; no need to specify unless overriding.
+# Example override: relax a rule for the entire project (uncomment if needed).
+# rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+
+[tool.uv]
+package = true
