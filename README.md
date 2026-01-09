@@ -1,12 +1,13 @@
 <div align="center">
-<img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/refs/heads/main/img/logo.png">
+<img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
 
 ## Shuuten Signal
 
-[![Build Status](https://github.com/rnag/shuuten/actions/workflows/test.yml/badge.svg)](https://github.com/rnag/shuuten/actions)
-[![Latest Version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
-[![Python Version](https://img.shields.io/pypi/pyversions/shuuten.svg)](https://pypi.python.org/pypi/shuuten)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/license/MIT)
+[![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
+[![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
+[![PyPI Python versions](https://img.shields.io/pypi/pyversions/shuuten.svg)](https://pypi.org/project/shuuten)
+[![GitHub Actions](https://github.com/rnag/shuuten/actions/workflows/release.yml/badge.svg)](https://github.com/rnag/shuuten/actions/workflows/release.yml)
+[![Documentation Status](https://github.com/rnag/shuuten/actions/workflows/gh-pages.yml/badge.svg)](https://shuuten.ritviknag.com)
 
 </div>
 
@@ -16,9 +17,11 @@
 
 *終点 (Shuuten) means “final stop” or “terminus” in Japanese — the point where a workflow ends and signals that something needs attention.*
 
----
-
 > 終点 (Shuuten): the final stop — where automations end and signal for attention.
+
+📖 Docs: [shuuten.ritviknag.com](https://shuuten.ritviknag.com) · ⭐ Star: [GitHub](https://github.com/rnag/shuuten)
+
+---
 
 ## About
 
