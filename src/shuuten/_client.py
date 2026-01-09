@@ -1,24 +1,83 @@
 from __future__ import annotations
 
+import os
+from logging import StreamHandler, getLogger, DEBUG, Handler, Formatter
+
 from functools import wraps
 from logging import Logger, getLogger
 from traceback import format_exception
 from typing import Iterable
 from ._event import Event
 from ._redact import redact
+from ._destinations import SlackWebhookDestination
+from ._integrations import ShuutenJSONFormatter
 
 
-def notify_exceptions(
-    notifier,
-    *,
+_NOTIFIER: Notifier | None = None
+_APP_NAME: str | None = None
+_ENV: str | None = None
+_HANDLER: Handler | None = None
+
+WEBHOOK_ENV_NAME = 'SLACK_WEBHOOK_URL'
+
+
+# HOW Would this look?? If i want to fire above certain level
+class SlackNotificationHandler(Handler):
+    __slots__ = ('_min_lvl', )
+
+    def __init__(self, min_level: str):
+        super().__init__()
+        self._min_lvl = min_level
+
+    def filter(self, record):
+        ...
+
+
+def init(app_name: str | None = None,
+         env: str | None = 'dev',
+         formatter: type[Formatter] = ShuutenJSONFormatter):
+    """
+    auto-detect destinations via env vars
+    """
+    global _APP_NAME, _ENV, _HANDLER, _NOTIFIER
+
+    _APP_NAME = app_name
+    _ENV = env
+
+    _HANDLER = StreamHandler()
+    _HANDLER.setFormatter(formatter())
+
+    destinations = []
+    if hook_url := os.environ.get(WEBHOOK_ENV_NAME):
+        destinations.append(SlackWebhookDestination(webhook_url=hook_url))
+
+    _NOTIFIER = Notifier(
+        app_name=_APP_NAME,
+        destinations=destinations
+    )
+
+
+def get_logger(name: str | None = None):
+    """
+    JSON formatter + handler once
+    """
+    log = getLogger(name)
+    log.addHandler(_HANDLER)
+    log.setLevel(DEBUG)
+
+    return log
+
+
+def catch(
     workflow: str,
-    env: str,
+    env: str | None = None,
     title: str = 'Automation failed',
     action: str | None = None,
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
     context_getter=None,     # fn(args, kwargs) -> dict
     re_raise: bool = True,
 ):
+
     def deco(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -39,7 +98,8 @@ def notify_exceptions(
                     context=context,
                 )
 
-                notifier.notify(event, exc=e)
+                if _NOTIFIER is not None:
+                    _NOTIFIER.notify(event, exc=e)
 
                 if re_raise:
                     raise
@@ -52,7 +112,6 @@ def notify_exceptions(
 
 
 class Notifier:
-
     __slots__ = (
         '_app_name',
         '_logger',

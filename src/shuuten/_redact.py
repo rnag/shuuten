@@ -2,20 +2,31 @@ import re
 from typing import Any
 
 
-DEFAULT_SENSITIVE_KEYS = frozenset((
+DEFAULT_SENSITIVE_KEYS = frozenset({
     'token',
     'access_token',
     'refresh_token',
+    'id_token',
+    'auth',
     'authorization',
-    'pwd',
     'password',
+    'pwd',
+    'passphrase',
     'secret',
     'client_secret',
-    'cookie',
-    'session',
+    'secret_key',
+    'private_key',
     'api_key',
-    'key',
-))
+    'x-api-key',
+    'x_api_key',
+    'cookie',
+    'set-cookie',
+    'set_cookie',
+    'session',
+    'aws_access_key_id',
+    'aws_secret_access_key',
+    'aws_session_token',
+})
 
 BEARER_RE = re.compile(r'(?i)\bBearer\s+[A-Za-z0-9\-_.=]+\b')
 

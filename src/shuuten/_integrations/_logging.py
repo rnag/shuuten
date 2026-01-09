@@ -14,6 +14,8 @@ class ShuutenJSONFormatter(Formatter):
             'msg': record.getMessage(),
             'logger': record.name,
         }
+        if record.stack_info:
+            base['stack'] = record.stack_info
 
         extra = getattr(record, 'shuuten', None)
         if extra:
