@@ -75,7 +75,7 @@ class Notifier:
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
         exc_text = None
-        if exc_text is not None:
+        if exc is not None:
             exc_text = ''.join(format_exception(type(exc), exc, exc.__traceback__))
             exc_text = redact(exc_text)
 
