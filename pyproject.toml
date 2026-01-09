@@ -73,6 +73,7 @@ test = [
     "coverage",  # testing
 ]
 dev = [
+    "bump-my-version==1.2.5",
     "ipdb",  # debugging
 ]
 email = ["boto3"]
@@ -80,7 +81,7 @@ email = ["boto3"]
 
 [project.urls]
 Homepage = "https://github.com/rnag/shuuten"
-# Documentation = "https://readthedocs.org"
+Documentation = "https://shuuten.ritviknag.com"
 Repository = "https://github.com/rnag/shuuten.git"
 Issues = "https://github.com/rnag/shuuten/issues"
 Changelog = "https://github.com/rnag/shuuten/blob/main/CHANGELOG.md"

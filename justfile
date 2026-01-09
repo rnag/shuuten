@@ -4,6 +4,22 @@
 list:
     @just --list
 
+# Install dev dependencies
+init:
+     pip install -e '.[docs, dev, email, lint, test]'
+
+bump-patch:
+	bump-my-version bump patch
+
+bump-minor:
+	bump-my-version bump minor
+
+bump-major:
+	bump-my-version bump major
+
+bump-patch-dry:
+	bump-my-version bump patch --dry-run --verbose
+
 # Run all the formatting, linting, and testing commands
 qa:
     uv run --python=3.13 --extra test ruff format .
@@ -54,7 +70,7 @@ tag:
     git push origin v{{VERSION}}
 
 # remove all build, test, coverage and Python artifacts
-clean: 
+clean:
 	clean-build
 	clean-pyc
 	clean-test
