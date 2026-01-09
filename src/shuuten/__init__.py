@@ -13,8 +13,8 @@ __all__ = [
 
 from ._shuuten import send_to_slack
 from ._client import Notifier, notify_exceptions
-from .destinations import SlackWebhookDestination
-from .integrations import ShuutenJSONFormatter
+from ._destinations import SlackWebhookDestination
+from ._integrations import ShuutenJSONFormatter
 
 
 def version():
