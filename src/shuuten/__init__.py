@@ -4,10 +4,17 @@ __author__ = """Ritvik Nag"""
 __email__ = 'me@ritviknag.com'
 
 __all__ = [
+    'Notifier',
+    'notify_exceptions',
+    'SlackWebhookDestination',
+    'ShuutenJSONFormatter',
     'send_to_slack',
 ]
 
-from .shuuten import send_to_slack
+from ._shuuten import send_to_slack
+from ._client import Notifier, notify_exceptions
+from .destinations import SlackWebhookDestination
+from .integrations import ShuutenJSONFormatter
 
 
 def version():
