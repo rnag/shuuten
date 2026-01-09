@@ -8,15 +8,19 @@ list:
 init:
      pip install -e '.[docs, dev, email, lint, test]'
 
+# Bump PATCH version (0.0.x)
 bump-patch:
 	bump-my-version bump patch
 
+# Bump MINOR version (0.x.0)
 bump-minor:
 	bump-my-version bump minor
 
+# Bump MAJOR version (x.0.0)
 bump-major:
 	bump-my-version bump major
 
+# Dry-bump PATCH version (0.0.x)
 bump-patch-dry:
 	bump-my-version bump patch --dry-run --verbose
 
