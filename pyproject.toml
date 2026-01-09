@@ -55,12 +55,24 @@ cli = [
     "rich",
     "typer",
 ]
+docs = [
+    'mkdocs',
+    'mkdocs-material',
+    'mkdocs-github-admonitions-plugin',
+    'mkdocs-markdownextradata-plugin',
+    'mkdocs-macros-plugin',
+    'mkdocs-include-markdown-plugin',
+]
+lint = [
+    "ruff",
+    "ty",  # checking types
+]
 test = [
     "pytest",  # testing
     "pytest-cov",  # testing
     "coverage",  # testing
-    "ruff",  # linting
-    "ty",  # checking types
+]
+dev = [
     "ipdb",  # debugging
 ]
 email = ["boto3"]

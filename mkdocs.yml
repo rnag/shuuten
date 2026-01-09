@@ -1,0 +1,58 @@
+site_name: "Shuuten Signal"
+site_url: "https://shuuten.ritviknag.com"
+
+repo_url: https://github.com/rnag/shuuten
+repo_name: rnag/shuuten
+
+theme:
+  name: material
+  features:
+    # - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - navigation.top
+    - navigation.footer
+    # - content.action.edit   # adds "Edit on GitHub"
+    # - content.action.view   # adds "View source"
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  # - Lambda Example: lambda_example.md
+  # - Features: features.md
+  # - Credits: credits.md
+
+docs_dir: docs
+
+plugins:
+  - search
+  - include-markdown
+  - gh-admonitions  # enables [!TIP], [!NOTE], etc.
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/rnag/shuuten
+  announcement:
+    content: "⭐ Star us on [GitHub](https://github.com/rnag/shuuten)!"
+  homepage: https://github.com/rnag/shuuten

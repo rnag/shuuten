@@ -1,13 +1,18 @@
-# Welcome to Shuuten Signal's documentation!
+<!-- include README.md content -->
+{%
+    include-markdown "../README.md"
+    start="<!--intro-start-->"
+    end="<!--intro-end-->"
+%}
 
 ## Contents
+[//]: # (- [Modules]&#40;modules.md&#41;)
 
-- [Readme](readme.md)
+- [Readme]("../README.md")
 - [Installation](installation.md)
 - [Usage](usage.md)
-- [Modules](modules.md)
-- [Contributing](contributing.md)
-- [History](history.md)
+- [Contributing]("../CONTRIBUTING.md")
+- [History]("../HISTORY.md")
 
 ## Indices and tables
 

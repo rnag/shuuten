@@ -1,5 +1,7 @@
+<!--intro-start-->
+
 <div align="center">
-<img alt="logo" width="175" src="img/logo.png">
+<img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/refs/heads/main/img/logo.png">
 
 ## Shuuten Signal
 
@@ -49,3 +51,5 @@ shuuten.send_to_slack(hook_url, payload)
 ## Credits
 
 This package was created with [Cookiecutter](https://github.com/audreyfeldroy/cookiecutter) and the [audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage) project template.
+
+<!--intro-end-->
