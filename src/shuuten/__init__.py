@@ -3,6 +3,10 @@
 __author__ = """Ritvik Nag"""
 __email__ = 'me@ritviknag.com'
 
+__all__ = [
+    'send_to_slack',
+]
+
 from .shuuten import send_to_slack
 
 

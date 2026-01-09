@@ -1,8 +1,8 @@
 """Slack webhook utilities for Shuuten."""
 
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
 
 def send_to_slack(webhook_url: str, payload: dict) -> None:
