@@ -3,7 +3,7 @@ from os import getenv
 
 
 # Minimum level for library logs, to show up in CloudWatch
-LOG_CFG = getenv('SHUUTEN_LOG_CFG')
+# LOG_CFG = getenv('SHUUTEN_LOG_CFG')
 
 # AWS Account Alias (name), can be optionally set in the environment
 #
@@ -11,23 +11,18 @@ LOG_CFG = getenv('SHUUTEN_LOG_CFG')
 # to retrieve the alias of the current AWS account.
 AWS_ACCOUNT_NAME = getenv('AWS_ACCOUNT_NAME')
 
-# AWS Region, should be automatically set for AWS Lambda functions
-AWS_REGION = getenv('AWS_REGION', 'us-east-1')
-
 # Minimum log level for messages sent to Slack
-SLACK_LOG_LVL = getenv('SHUUTEN_SLACK_LOG_LVL', ERROR)
+SLACK_MIN_LVL_ENV_VAR = 'SHUUTEN_SLACK_LOG_LVL'
 
 # Slack webhook
-SLACK_WEBHOOK_URL = getenv('SHUUTEN_SLACK_WEBHOOK_URL')
+
+SLACK_WEBHOOK_ENV_VAR = 'SHUUTEN_SLACK_WEBHOOK_URL'
 
 # Optional link to source code repo for the project
-SOURCE_CODE = getenv('SOURCE_CODE')
-
-# (ECS Tasks) Optional link to the AWS log group
-AWS_LOG_GROUP = getenv('AWS_LOG_GROUP')
+# SOURCE_CODE = getenv('SOURCE_CODE')
 
 # Local time zone
-LOCAL_TZ = getenv('LOCAL_TZ', 'US/Eastern')
+# LOCAL_TZ = getenv('LOCAL_TZ', 'US/Eastern')
 
 # SES outbound email address
 # SES_IDENTITY = getenv('SES_IDENTITY')

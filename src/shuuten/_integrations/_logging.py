@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 from hashlib import sha1
 from json import dumps
-from logging import Formatter, Handler, LogRecord, ERROR, CRITICAL, getLogger
+from logging import ERROR, CRITICAL, Formatter, Handler, LogRecord
 from time import time
 
-from .._event import Event
+from .._models import Event
+from .._runtime import get_runtime_context
 from .._log import LOG
 from .._redact import redact
 
@@ -17,6 +18,14 @@ class DropInternalSlackNotifyFilter(logging.Filter):
     """
     def filter(self, record: logging.LogRecord) -> bool:
         return not getattr(record, 'shuuten_skip_slack', False)
+
+
+class ShuutenContextFilter(logging.Filter):
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        # Attach for formatters/handlers
+        record.shuuten_rt = get_runtime_context()
+        return True
 
 
 class SlackNotificationHandler(Handler):
@@ -53,6 +62,8 @@ class SlackNotificationHandler(Handler):
         self._last_sent: dict[str, float] = {}
 
         self.addFilter(DropInternalSlackNotifyFilter())
+        # add it to slack_handler so it gets context even if logger filters differ
+        self.addFilter(ShuutenContextFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
         # Dedupe by message + call-site
@@ -92,9 +103,11 @@ class SlackNotificationHandler(Handler):
                 'msg': msg,
             })
 
+            title = msg if msg else self._title
+
             event = Event(
                 level='error' if record.levelno < CRITICAL else 'critical',
-                title=self._title,
+                title=title,
                 workflow=self._workflow,
                 action=record.funcName,  # or record.name
                 env=self._env,
