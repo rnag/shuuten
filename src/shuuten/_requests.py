@@ -3,6 +3,20 @@
 import json
 import urllib.error
 import urllib.request
+from typing import Any
+
+
+def http_get_json(url) -> dict[str, Any]:
+    req = urllib.request.Request(
+        url,
+        method='GET',
+        headers={'Content-Type': 'application/json'},
+    )
+
+    with urllib.request.urlopen(req, timeout=5) as resp:
+        body = resp.read().decode('utf-8')
+
+    return json.loads(body)
 
 
 def send_to_slack(webhook_url: str, payload: dict) -> None:
@@ -19,18 +33,20 @@ def send_to_slack(webhook_url: str, payload: dict) -> None:
 
     req = urllib.request.Request(
         webhook_url,
+        method='POST',
         data=data,
         headers={'Content-Type': 'application/json'},
-        method='POST',
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            r = resp.read()
             if resp.status >= 400:
-                body = resp.read().decode('utf-8', errors='replace')
+                body = r.decode('utf-8', errors='replace')
                 raise RuntimeError(
                     f'Slack webhook failed with status {resp.status}: {body}'
                 )
+            return r
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
         raise RuntimeError(

@@ -12,7 +12,7 @@ from ._integrations import (ShuutenContextFilter,
                             ShuutenJSONFormatter,
                             SlackNotificationHandler)
 from ._log import LOG
-from ._models import Event
+from ._models import Event, detect_context
 from ._redact import redact
 from ._runtime import (get_runtime_context,
                        set_lambda_context,
@@ -211,13 +211,10 @@ class Notifier:
         logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
-        # TODO if no context is explicitly set:
-        #   detect Lambda by AWS_LAMBDA_FUNCTION_NAME
-        #   detect ECS by ECS_CONTAINER_METADATA_URI_V4
-        #       else local
 
         # If we have a RuntimeContext, enrich source / log_url here
-        rt = get_runtime_context()
+        # if no context is explicitly set: detect Lambda, ECS, or local
+        rt = get_runtime_context() or detect_context()
         if rt:
             rt.enrich_event_source(event)
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import urllib.request
-
 from typing import Literal
+
 from .._models import Event
 from .._redact import redact
+from .._requests import send_to_slack
 
 
 SLACK_FORMAT_TYPE = Literal['blocks', 'plain']
@@ -63,21 +63,21 @@ def slack_blocks_for_event(event: Event, exc_text: str | None) -> list[dict]:
         })
 
     # Key fields (keep compact)
-    fields: list[dict] = []
-    add_field(fields, 'Env', event.env)
-    add_field(fields, 'Workflow', event.workflow)
-    add_field(fields, 'Run ID', event.run_id)
-    add_field(fields, 'Function', src.get('function_name'))
-    add_field(fields, 'Request ID', src.get('request_id'))
-    add_field(fields, 'Account', src.get('account_name') or src.get('account_id'))
-    add_field(fields, 'Region', src.get('region'))
+    f: list[dict] = []
+    add_field(f, 'Env', event.env)
+    add_field(f, 'Workflow', event.workflow)
+    add_field(f, 'Run ID', event.run_id)
+    add_field(f, 'Function', src.get('function_name'))
+    add_field(f, 'Request ID', src.get('request_id'))
+    add_field(f, 'Account', src.get('account_name') or src.get('account_id'))
+    add_field(f, 'Region', src.get('region'))
 
-    # Optional callsite fields (if you include them)
-    add_field(fields, 'Logger', ctx.get('logger'))
-    add_field(fields, 'File', f"{ctx.get('file')}:{ctx.get('lineno')}" if ctx.get('file') and ctx.get('lineno') else None)
+    # Optional call-site fields (if you include them)
+    add_field(f, 'Logger', ctx.get('logger'))
+    add_field(f, 'File', f"{ctx.get('file')}:{ctx.get('lineno')}" if ctx.get('file') and ctx.get('lineno') else None)
 
-    if fields:
-        blocks.append({'type': 'section', 'fields': fields[:10]})
+    if f:
+        blocks.append({'type': 'section', 'fields': f[:10]})
 
     # Links row
     links = []
@@ -181,12 +181,4 @@ class SlackWebhookDestination:
         if self._username:
             payload['username'] = self._username
 
-        req = urllib.request.Request(
-            self._webhook_url,
-            method='POST',
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-        )
-
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            resp.read()
+        return send_to_slack(self._webhook_url, payload)
