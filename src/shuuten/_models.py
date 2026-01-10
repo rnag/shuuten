@@ -199,8 +199,7 @@ def from_ecs(ecs_metadata: str | None = None) -> RuntimeContext | None:
         account_id = arn_account or account_id
 
     # Container logging info (varies by log driver)
-    # TODO unsure if set
-    log_group = getenv('AWS_LOG_GROUP')
+    log_group = None
     log_stream = None
 
     # For awslogs driver, ECS metadata usually exposes LogOptions
