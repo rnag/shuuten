@@ -11,12 +11,12 @@ from .._log import LOG
 from .._redact import redact
 
 
-class DropNoNotifyFilter(logging.Filter):
+class DropInternalSlackNotifyFilter(logging.Filter):
     """
     Filter that drops records with `shuuten_no_notify`
     """
     def filter(self, record: logging.LogRecord) -> bool:
-        return not getattr(record, 'shuuten_no_notify', False)
+        return not getattr(record, 'shuuten_skip_slack', False)
 
 
 class SlackNotificationHandler(Handler):
@@ -51,6 +51,8 @@ class SlackNotificationHandler(Handler):
         self._context_getter = context_getter
         self._dedupe_window_s = dedupe_window_s
         self._last_sent: dict[str, float] = {}
+
+        self.addFilter(DropInternalSlackNotifyFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
         # Dedupe by message + call-site
@@ -133,6 +135,8 @@ class ShuutenJSONFormatter(Formatter):
         }
         if record.stack_info:
             base['stack'] = record.stack_info
+        if getattr(record, 'shuuten_internal', False):
+            base['kind'] = 'shuuten.signal'
 
         extra = getattr(record, 'shuuten', None)
         if extra:

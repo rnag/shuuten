@@ -52,6 +52,8 @@ payload = {'text': 'Hello from Shuuten 👋 (webhook test)'}
 shuuten.send_to_slack(hook_url, payload)
 ```
 
+By default Shuuten emits a local structured log record whenever it sends a notification. Disable with emit_local_log=False if you only want external notifications.
+
 ## Credits
 
 This package was created with [Cookiecutter](https://github.com/audreyfeldroy/cookiecutter) and the [audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage) project template.

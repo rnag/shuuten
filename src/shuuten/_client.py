@@ -11,8 +11,7 @@ from ._event import Event
 from ._log import LOG
 from ._redact import redact
 from ._destinations import SlackWebhookDestination
-from ._integrations import (DropNoNotifyFilter,
-                            ShuutenJSONFormatter,
+from ._integrations import (ShuutenJSONFormatter,
                             SlackNotificationHandler)
 
 
@@ -26,7 +25,7 @@ def setup(app_name: str,
           *,
           env: str = 'dev',
           min_lvl: str | int = ERROR,
-          enable_slack_log_handler=True,
+          emit_local_log: bool = True,
           logger_name: str | None = None,
           configure_root: bool = False,
           **kwargs) -> Logger:
@@ -35,7 +34,7 @@ def setup(app_name: str,
         app_name=app_name,
         env=env,
         min_lvl=min_lvl,
-        enable_slack_log_handler=enable_slack_log_handler,
+        emit_local_log=emit_local_log,
         **kwargs,
     )
 
@@ -44,9 +43,9 @@ def setup(app_name: str,
 
 def init(app_name: str | None = None,
          env: str | None = 'dev',
-         formatter: type[Formatter] = ShuutenJSONFormatter,
          min_lvl: str | int = ERROR,
-         enable_slack_log_handler=True,
+         emit_local_log: bool = True,
+         formatter: type[Formatter] = ShuutenJSONFormatter,
          reset: bool = False):
     """
     auto-detect destinations via env vars
@@ -60,32 +59,34 @@ def init(app_name: str | None = None,
     _APP_NAME = app_name
     _ENV = env
 
-    _filter = DropNoNotifyFilter()
-
     handler = StreamHandler()
-    handler.addFilter(_filter)
     handler.setFormatter(formatter())
 
     _HANDLERS = [handler]
 
     destinations = []
-    if hook_url := os.environ.get(SLACK_WEBHOOK_ENV_VAR):
+    hook_url = os.environ.get(SLACK_WEBHOOK_ENV_VAR)
+    enable_slack_log_handler = True if hook_url else False
+
+    if enable_slack_log_handler:
         LOG.debug('Found slack webhook %s', hook_url)
         destinations.append(SlackWebhookDestination(webhook_url=hook_url))
 
+    # TODO: add more destinations
+
     _NOTIFIER = Notifier(
         app_name=_APP_NAME,
-        destinations=destinations
+        destinations=destinations,
+        enable_local_logging=emit_local_log,
     )
 
-    if enable_slack_log_handler and destinations:
+    if enable_slack_log_handler:
         slack_handler = SlackNotificationHandler(
             _NOTIFIER,
             workflow='logs',
             env=_ENV,
             min_level=min_lvl,
         )
-        slack_handler.addFilter(_filter)
         _HANDLERS.append(slack_handler)
 
 
@@ -174,9 +175,10 @@ class Notifier:
         enable_local_logging: bool = True,
     ):
         self._app_name = app_name
-        self._logger = logger or getLogger(app_name)
         self._destinations = list(destinations) if destinations else []
         self._enable_local_logging = enable_local_logging
+        self._logger = logger = logger or getLogger(f'{app_name}.shuuten')
+        logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
         exc_text = None
@@ -201,7 +203,14 @@ class Notifier:
             })
             # log as structured dict (formatter can JSON-dump it)
             log_fn = getattr(self._logger, event.level, self._logger.error)
-            log_fn(event.title, extra={'shuuten': payload, 'shuuten_no_notify': True})
+            log_fn(
+                'shuuten.notify',
+                extra={
+                    'shuuten': payload,
+                    'shuuten_internal': True,    # clear signal for humans / tools
+                    'shuuten_skip_slack': True,
+                },
+            )
 
         # 2. Destinations
         for d in self._destinations:

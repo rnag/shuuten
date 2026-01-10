@@ -1,1 +1,1 @@
-from ._logging import DropNoNotifyFilter, ShuutenJSONFormatter, SlackNotificationHandler
+from ._logging import DropInternalSlackNotifyFilter, ShuutenJSONFormatter, SlackNotificationHandler
