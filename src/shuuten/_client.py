@@ -6,7 +6,7 @@ from functools import wraps
 from traceback import format_exception
 from typing import Iterable
 
-from ._constants import SLACK_WEBHOOK_ENV_VAR
+from ._constants import SLACK_WEBHOOK_URL, SLACK_LOG_LVL
 from ._event import Event
 from ._log import LOG
 from ._redact import redact
@@ -24,7 +24,7 @@ _HANDLERS: list[Handler] | None = None
 def setup(app_name: str,
           *,
           env: str = 'dev',
-          min_lvl: str | int = ERROR,
+          min_lvl: str | int = SLACK_LOG_LVL,
           emit_local_log: bool = True,
           logger_name: str | None = None,
           configure_root: bool = False,
@@ -43,7 +43,7 @@ def setup(app_name: str,
 
 def init(app_name: str | None = None,
          env: str | None = 'dev',
-         min_lvl: str | int = ERROR,
+         min_lvl: str | int = SLACK_LOG_LVL,
          emit_local_log: bool = True,
          formatter: type[Formatter] = ShuutenJSONFormatter,
          reset: bool = False):
@@ -65,12 +65,11 @@ def init(app_name: str | None = None,
     _HANDLERS = [handler]
 
     destinations = []
-    hook_url = os.environ.get(SLACK_WEBHOOK_ENV_VAR)
-    enable_slack_log_handler = True if hook_url else False
+    enable_slack_log_handler = True if SLACK_WEBHOOK_URL else False
 
     if enable_slack_log_handler:
-        LOG.debug('Found slack webhook %s', hook_url)
-        destinations.append(SlackWebhookDestination(webhook_url=hook_url))
+        LOG.debug('Found slack webhook %s', SLACK_WEBHOOK_URL)
+        destinations.append(SlackWebhookDestination(webhook_url=SLACK_WEBHOOK_URL))
 
     # TODO: add more destinations
 
