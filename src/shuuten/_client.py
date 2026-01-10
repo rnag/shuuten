@@ -207,9 +207,18 @@ class Notifier:
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
         # TODO maybe run this logic once instead of every time
+
+        # TODO if no context is explicitly set:
+        #   detect Lambda by AWS_LAMBDA_FUNCTION_NAME
+        #   detect ECS by ECS_CONTAINER_METADATA_URI_V4
+        #       else local
+
+        # If we have a RuntimeContext, enrich source / log_url here
         rt = get_runtime_context()
 
         if rt:
+            # TODO seems expensive to run this each time
+
             # Fill event.source / log_url if missing
             if not event.source:
                 event.source = {
@@ -225,10 +234,6 @@ class Notifier:
                     'account_id': rt.account_id,
                     'source_code': rt.source_code,
                 }
-
-            service: str | None
-            env: str | None
-
 
             if rt.function_name and rt.region:
                 event.source['function_url'] = lambda_console_link(rt.region, rt.function_name)
