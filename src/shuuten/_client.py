@@ -1,23 +1,35 @@
 from __future__ import annotations
 
 from functools import wraps
-from logging import DEBUG, StreamHandler, Logger, getLogger, Handler, Formatter, ERROR
+from logging import (DEBUG, ERROR, WARNING,
+                     StreamHandler,
+                     Logger,
+                     getLogger,
+                     Handler,
+                     Formatter)
 from os import getenv
 from traceback import format_exception
 from typing import Iterable
 
-from ._constants import SLACK_WEBHOOK_ENV_VAR, SLACK_MIN_LVL_ENV_VAR
-from ._destinations import SlackWebhookDestination, SLACK_FORMAT_TYPE
+from ._constants import (SLACK_WEBHOOK_ENV_VAR,
+                         SLACK_MIN_LVL_ENV_VAR,
+                         SES_FROM_ENV_VAR,
+                         SES_TO_ENV_VAR,
+                         SES_REPLY_TO_ENV_VAR,
+                         SES_REGION_ENV_VAR)
+from ._destinations import (SlackWebhookDestination,
+                            SLACK_FORMAT_TYPE,
+                            SESDestination,
+                            split_emails)
 from ._integrations import (ShuutenContextFilter,
                             ShuutenJSONFormatter,
                             SlackNotificationHandler)
-from ._log import LOG
+from ._log import LOG, quiet_third_party_logs
 from ._models import Event, detect_context
 from ._redact import redact
 from ._runtime import (get_runtime_context,
                        set_lambda_context,
                        reset_runtime_context)
-
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None
@@ -31,26 +43,29 @@ def setup(app_name: str,
           slack_format: SLACK_FORMAT_TYPE = 'blocks',
           logger_name: str | None = None,
           configure_root: bool = False,
-          **kwargs) -> Logger:
+          formatter: type[Formatter] = ShuutenJSONFormatter,
+          quiet_level: int | None = WARNING,
+          reset: bool = False) -> Logger:
 
-    init(
-        app_name=app_name,
-        env=env,
-        min_lvl=min_lvl,
-        emit_local_log=emit_local_log,
-        slack_format=slack_format,
-        **kwargs,
-    )
+    init(app_name, env,
+         min_lvl=min_lvl,
+         emit_local_log=emit_local_log,
+         slack_format=slack_format,
+         formatter=formatter,
+         quiet_level=quiet_level,
+         reset=reset)
 
     return get_logger(logger_name, configure_root)
 
 
 def init(app_name: str | None = None,
          env: str | None = 'dev',
+         *,
          min_lvl: str | int = ERROR,
          emit_local_log: bool = True,
          slack_format: SLACK_FORMAT_TYPE = 'blocks',
          formatter: type[Formatter] = ShuutenJSONFormatter,
+         quiet_level: int | None = WARNING,
          reset: bool = False):
     """
     auto-detect destinations via env vars
@@ -61,8 +76,15 @@ def init(app_name: str | None = None,
     if _HANDLERS is not None and not reset:
         return
 
+    if quiet_level is not None:
+        quiet_third_party_logs(quiet_level)
+
     min_lvl = getenv(SLACK_MIN_LVL_ENV_VAR, min_lvl)
     slack_webhook_url = getenv(SLACK_WEBHOOK_ENV_VAR)
+    ses_from = getenv(SES_FROM_ENV_VAR)
+    ses_to = getenv(SES_TO_ENV_VAR)
+    ses_reply_to = getenv(SES_REPLY_TO_ENV_VAR)
+    ses_region = getenv(SES_REGION_ENV_VAR)
 
     handler = StreamHandler()
     handler.setFormatter(formatter())
@@ -73,15 +95,27 @@ def init(app_name: str | None = None,
     destinations = []
     enable_slack_log_handler = True if slack_webhook_url else False
 
+    # DESTINATIONS
+    # Slack
     if enable_slack_log_handler:
-        LOG.debug('Found slack webhook %s', slack_webhook_url)
+        LOG.debug('Slack: Found webhook %s',
+                  slack_webhook_url)
         slack_destination = SlackWebhookDestination(
             webhook_url=slack_webhook_url,
             slack_format=slack_format,
         )
         destinations.append(slack_destination)
-
-    # TODO: add more destinations
+    # Email
+    if ses_from and ses_to:
+        LOG.debug('SES: Found FROM (%s) and TO (%s)',
+                  ses_from, ses_to)
+        email_destination = SESDestination(
+            from_address=ses_from,
+            to_addresses=split_emails(ses_to),
+            reply_to=split_emails(ses_reply_to),
+            region_name=ses_region,
+        )
+        destinations.append(email_destination)
 
     _NOTIFIER = Notifier(
         app_name=app_name,
@@ -130,7 +164,7 @@ def catch(
     title: str = 'Automation failed',
     action: str | None = None,
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
-    context_getter=None,     # fn(args, kwargs) -> dict
+    context_getter=None,  # fn(args, kwargs) -> dict
     re_raise: bool = True,
 ):
     """
@@ -244,7 +278,7 @@ class Notifier:
                 '[shuuten] notifier emission (local only)',
                 extra={
                     'shuuten': payload,
-                    'shuuten_internal': True,    # clear signal for humans / tools
+                    'shuuten_internal': True,  # clear signal for humans / tools
                     'shuuten_skip_slack': True,
                 },
             )

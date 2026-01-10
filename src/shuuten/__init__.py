@@ -21,12 +21,19 @@ __all__ = [
     'ShuutenJSONFormatter',
 ]
 
-from ._shuuten import send_to_slack
+from logging import NullHandler
+
 from ._client import Notifier, setup, catch, init, get_logger
+from ._log import LOG
 from ._models import from_lambda_context
+from ._requests import send_to_slack
 from ._runtime import set_lambda_context, set_runtime_context, reset_runtime_context
 from ._destinations import SlackWebhookDestination
 from ._integrations import ShuutenJSONFormatter
+
+# Set up logging to ``/dev/null`` like a library is supposed to.
+# http://docs.python.org/3.3/howto/logging.html#configuring-logging-for-a-library
+LOG.addHandler(NullHandler())
 
 
 def version():
