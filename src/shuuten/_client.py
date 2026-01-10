@@ -6,23 +6,24 @@ from os import getenv
 from traceback import format_exception
 from typing import Iterable
 
-from ._aws_links import cloudwatch_log_stream_link
+from . import set_lambda_context
+from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
 from ._constants import SLACK_WEBHOOK_ENV_VAR, SLACK_MIN_LVL_ENV_VAR
 from ._destinations import SlackWebhookDestination, SLACK_FORMAT_TYPE
 from ._integrations import (ShuutenContextFilter,
                             ShuutenJSONFormatter,
                             SlackNotificationHandler)
 from ._log import LOG
-from ._models import (Event,
-                      from_lambda_context)
-from ._runtime import get_runtime_context, set_runtime_context, reset_runtime_context
+from ._models import Event
 from ._redact import redact
+from ._runtime import get_runtime_context, reset_runtime_context
 
 
 _NOTIFIER: Notifier | None = None
-_APP_NAME: str | None = None
-_ENV: str | None = None
+# _APP_NAME: str | None = None
+# _ENV: str | None = None
 _HANDLERS: list[Handler] | None = None
+_INIT: bool = False
 
 
 def setup(app_name: str,
@@ -57,18 +58,14 @@ def init(app_name: str | None = None,
     """
     auto-detect destinations via env vars
     """
-    global _APP_NAME, _ENV, _HANDLERS, _NOTIFIER
+    global _INIT, _HANDLERS, _NOTIFIER
 
     # Skip on Lambda warm start
-    if _HANDLERS is not None and not reset:
+    if _INIT and not reset:
         return
 
     min_lvl = getenv(SLACK_MIN_LVL_ENV_VAR, min_lvl)
-
     slack_webhook_url = getenv(SLACK_WEBHOOK_ENV_VAR)
-
-    _APP_NAME = app_name
-    _ENV = env
 
     handler = StreamHandler()
     handler.setFormatter(formatter())
@@ -90,7 +87,7 @@ def init(app_name: str | None = None,
     # TODO: add more destinations
 
     _NOTIFIER = Notifier(
-        app_name=_APP_NAME,
+        app_name=app_name,
         destinations=destinations,
         enable_local_logging=emit_local_log,
     )
@@ -99,10 +96,13 @@ def init(app_name: str | None = None,
         slack_handler = SlackNotificationHandler(
             _NOTIFIER,
             workflow='logs',
-            env=_ENV,
+            env=env,
             min_level=min_lvl,
         )
         _HANDLERS.append(slack_handler)
+
+    # set initialized to `true`
+    _INIT = True
 
 
 def get_logger(name: str | None = None,
@@ -139,6 +139,9 @@ def catch(
     context_getter=None,     # fn(args, kwargs) -> dict
     re_raise: bool = True,
 ):
+    """
+    Decorator for AWS Lambda Function/s.
+    """
 
     def deco(fn):
         @wraps(fn)
@@ -146,8 +149,7 @@ def catch(
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
 
-            rt_context = from_lambda_context(ctx_obj, env=env)
-            token = set_runtime_context(rt_context)
+            token = set_lambda_context(ctx_obj)
 
             try:
                 return fn(*args, **kwargs)
@@ -204,29 +206,41 @@ class Notifier:
         logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
+        # TODO maybe run this logic once instead of every time
         rt = get_runtime_context()
 
-        # Fill event.source / log_url if missing
-        if rt and not event.source:
-            event.source = {
-                'platform': rt.platform,
-                'function_name': rt.function_name,
-                'request_id': rt.request_id,
-                'region': rt.region,
-                'log_group': rt.log_group,
-                'log_stream': rt.log_stream,
-                'cluster': rt.cluster_name,
-                'task_arn': rt.task_arn,
-            }
+        if rt:
+            # Fill event.source / log_url if missing
+            if not event.source:
+                event.source = {
+                    'platform': rt.platform,
+                    'function_name': rt.function_name,
+                    'request_id': rt.request_id,
+                    'region': rt.region,
+                    'log_group': rt.log_group,
+                    'log_stream': rt.log_stream,
+                    'cluster': rt.cluster_name,
+                    'task_arn': rt.task_arn,
+                    'account_name': rt.account_name,
+                    'account_id': rt.account_id,
+                    'source_code': rt.source_code,
+                }
 
-        # TODO might move this out
-        # for canonical log_url
-        if not event.log_url and rt and rt.region and rt.log_group:
-            # pick most relevant
-            if rt.log_stream:
-                event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group, rt.log_stream)
-            else:
-                event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group)
+            service: str | None
+            env: str | None
+
+
+            if rt.function_name and rt.region:
+                event.source['function_url'] = lambda_console_link(rt.region, rt.function_name)
+
+            # TODO might move this out
+            # for canonical log_url
+            if not event.log_url and rt.region and rt.log_group:
+                # pick most relevant
+                if rt.log_stream:
+                    event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group, rt.log_stream)
+                else:
+                    event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group)
 
         exc_text = None
         if exc is not None:

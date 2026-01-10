@@ -61,11 +61,11 @@ import shuuten
 
 def handler(event, context):
     shuuten.init(...)
-    token = shuuten._runtime.set_runtime_context(shuuten.from_lambda_context(context, env="prod"))
+    token = shuuten.set_lambda_context(context)
     try:
         ...
     finally:
-        shuuten._runtime.reset_runtime_context(token)
+        shuuten.reset_runtime_context(token)
 ```
 
 By default Shuuten emits a local structured log record whenever it sends a notification. Disable with emit_local_log=False if you only want external notifications.

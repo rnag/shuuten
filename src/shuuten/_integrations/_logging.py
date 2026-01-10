@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 from hashlib import sha1
 from json import dumps
-from logging import ERROR, CRITICAL, Formatter, Handler, LogRecord
+from logging import ERROR, Formatter, Handler, LogRecord
 from time import time
 
-from .._models import Event
-from .._runtime import get_runtime_context
+from .._aws_links import cloudwatch_log_stream_link
 from .._log import LOG
+from .._models import Event
 from .._redact import redact
+from .._runtime import get_runtime_context
 
 
 class DropInternalSlackNotifyFilter(logging.Filter):
@@ -24,6 +25,10 @@ class ShuutenContextFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         # Attach for formatters/handlers
+        # TODO if no context is explicitly set:
+        #   detect Lambda by AWS_LAMBDA_FUNCTION_NAME
+        #   detect ECS by ECS_CONTAINER_METADATA_URI_V4
+        #       else local
         record.shuuten_rt = get_runtime_context()
         return True
 
@@ -61,8 +66,9 @@ class SlackNotificationHandler(Handler):
         self._dedupe_window_s = dedupe_window_s
         self._last_sent: dict[str, float] = {}
 
+        # filter to drop records with `shuuten_no_notify`
         self.addFilter(DropInternalSlackNotifyFilter())
-        # add it to slack_handler so it gets context even if logger filters differ
+        # context filter so `shuuten_rt` is present in each log record
         self.addFilter(ShuutenContextFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
@@ -84,7 +90,6 @@ class SlackNotificationHandler(Handler):
 
         # noinspection PyBroadException
         try:
-
             context: dict = {}
             if self._context_getter:
                 context = self._context_getter(record) or {}
@@ -103,23 +108,56 @@ class SlackNotificationHandler(Handler):
                 'msg': msg,
             })
 
-            title = msg if msg else self._title
+            level = record.levelname.lower()
+            action = record.name  # Prefer logger name as 'action'
+
+            if record.exc_info:
+                exc = record.exc_info[1]
+                title = self._title
+            else:
+                exc = None
+                title = 'Log forwarded'
 
             event = Event(
-                level='error' if record.levelno < CRITICAL else 'critical',
+                level=level,
                 title=title,
                 workflow=self._workflow,
-                action=record.funcName,  # or record.name
+                action=action,
                 env=self._env,
                 context=redact(context),
             )
 
-            exc = None
-            if record.exc_info:
-                exc = record.exc_info[1]
-            elif self._include_stack and record.stack_info:
+            if exc is None and self._include_stack and record.stack_info:
                 # treat stack_info as part of context
                 event.context['stack'] = redact(record.stack_info)
+
+            # Attach runtime context + links if available
+            rt = getattr(record, 'shuuten_rt', None)
+
+            # If we have a RuntimeContext, enrich source/log_url here
+            if rt:
+                # TODO seems expensive to run this each time
+
+                event.source = {
+                    'platform': rt.platform,
+                    'function_name': rt.function_name,
+                    'request_id': rt.request_id,
+                    'region': rt.region,
+                    'log_group': rt.log_group,
+                    'log_stream': rt.log_stream,
+                    'cluster': rt.cluster_name,
+                    'task_arn': rt.task_arn,
+                    # optional extras
+                    # 'account_id': getattr(rt, 'account_id', None),
+                    'account_name': getattr(rt, 'account_name', None),
+                    'source_code': getattr(rt, 'source_code', None),
+                }
+
+                # If we have an AWS link builder, set event.log_url
+                if rt.region and rt.log_group and not event.log_url:
+                    event.log_url = cloudwatch_log_stream_link(
+                        rt.region, rt.log_group, rt.log_stream
+                    )
 
             self._notifier.notify(event, exc=exc)
 

@@ -69,6 +69,7 @@ def slack_blocks_for_event(event: Event, exc_text: str | None) -> list[dict]:
     add_field(fields, 'Run ID', event.run_id)
     add_field(fields, 'Function', src.get('function_name'))
     add_field(fields, 'Request ID', src.get('request_id'))
+    add_field(fields, 'Account', src.get('account_name') or src.get('account_id'))
     add_field(fields, 'Region', src.get('region'))
 
     # Optional callsite fields (if you include them)
@@ -85,6 +86,9 @@ def slack_blocks_for_event(event: Event, exc_text: str | None) -> list[dict]:
     fn_url = src.get('function_url')
     if fn_url:
         links.append(f'<{fn_url}|Lambda>')
+    repo = src.get('source_code')
+    if repo:
+        links.append(f'<{repo}|Source>')
 
     if links:
         blocks.append({'type': 'section', 'text': {'type': 'mrkdwn', 'text': ' · '.join(links)}})
