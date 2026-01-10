@@ -1,5 +1,122 @@
+from __future__ import annotations
+
+import logging
+from hashlib import sha1
 from json import dumps
-from logging import Formatter, LogRecord
+from logging import Formatter, Handler, LogRecord, ERROR, CRITICAL, getLogger
+from time import time
+
+from .._event import Event
+from .._log import LOG
+from .._redact import redact
+
+
+class DropNoNotifyFilter(logging.Filter):
+    """
+    Filter that drops records with `shuuten_no_notify`
+    """
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not getattr(record, 'shuuten_no_notify', False)
+
+
+class SlackNotificationHandler(Handler):
+    """
+    Forwards ERROR+ log records to the global Shuuten notifier (or a passed-in notifier).
+
+    Intended for "oops" paths; keep level high (ERROR/CRITICAL) to avoid spam.
+    """
+
+    def __init__(
+        self,
+        notifier,  # Notifier
+        *,
+        workflow: str,
+        env: str | None = None,
+        min_level: str | int = ERROR,
+        title: str = 'Automation error',
+        include_stack: bool = True,
+        context_getter=None,  # fn(record) -> dict
+        dedupe_window_s: float = 30.0,
+    ):
+        if isinstance(min_level, str):
+            # noinspection PyUnresolvedReferences,PyProtectedMember
+            min_level = logging._nameToLevel.get(min_level.upper(), ERROR)
+
+        super().__init__(level=min_level)  # logging will filter by level for us
+        self._notifier = notifier
+        self._workflow = workflow
+        self._env = env
+        self._title = title
+        self._include_stack = include_stack
+        self._context_getter = context_getter
+        self._dedupe_window_s = dedupe_window_s
+        self._last_sent: dict[str, float] = {}
+
+    def _should_send(self, record: LogRecord, msg: str) -> bool:
+        # Dedupe by message + call-site
+        key_src = f'{record.name}:{record.filename}:{record.lineno}:{msg}'
+        key = sha1(key_src.encode('utf-8')).hexdigest()
+        now = time()
+        last = self._last_sent.get(key)
+        if last is not None and (now - last) < self._dedupe_window_s:
+            return False
+        self._last_sent[key] = now
+        return True
+
+    def emit(self, record: LogRecord) -> None:
+        # record.getMessage() formats %s args
+        msg = record.getMessage()
+        if not self._should_send(record, msg):
+            return
+
+        # noinspection PyBroadException
+        try:
+
+            context: dict = {}
+            if self._context_getter:
+                context = self._context_getter(record) or {}
+
+            # carry through any structured extra the user attached
+            shuuten_extra = getattr(record, 'shuuten', None)
+            if isinstance(shuuten_extra, dict):
+                context |= {'shuuten': shuuten_extra}
+
+            # Add call-site info (helpful in Slack)
+            context.update({
+                'logger': record.name,
+                'file': record.filename,
+                'lineno': record.lineno,
+                'func': record.funcName,
+                'msg': msg,
+            })
+
+            event = Event(
+                level='error' if record.levelno < CRITICAL else 'critical',
+                title=self._title,
+                workflow=self._workflow,
+                action=record.funcName,  # or record.name
+                env=self._env,
+                context=redact(context),
+            )
+
+            exc = None
+            if record.exc_info:
+                exc = record.exc_info[1]
+            elif self._include_stack and record.stack_info:
+                # treat stack_info as part of context
+                event.context['stack'] = redact(record.stack_info)
+
+            self._notifier.notify(event, exc=exc)
+
+        except Exception:
+            # never raise from logging handler
+            # noinspection PyBroadException
+            try:
+                LOG.debug(
+                    f'{self.__class__.__name__} failed', exc_info=True
+                )
+            except Exception:
+                pass
 
 
 class ShuutenJSONFormatter(Formatter):

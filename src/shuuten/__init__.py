@@ -4,6 +4,7 @@ __author__ = """Ritvik Nag"""
 __email__ = 'me@ritviknag.com'
 
 __all__ = [
+    'setup',
     'init',
     'catch',
     'get_logger',
@@ -14,7 +15,7 @@ __all__ = [
 ]
 
 from ._shuuten import send_to_slack
-from ._client import Notifier, catch, init, get_logger
+from ._client import Notifier, setup, catch, init, get_logger
 from ._destinations import SlackWebhookDestination
 from ._integrations import ShuutenJSONFormatter
 

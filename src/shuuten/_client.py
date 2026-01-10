@@ -1,54 +1,76 @@
 from __future__ import annotations
 
 import os
-from logging import StreamHandler, getLogger, DEBUG, Handler, Formatter
-
+from logging import DEBUG, StreamHandler, Logger, getLogger, Handler, Formatter, ERROR
 from functools import wraps
-from logging import Logger, getLogger
 from traceback import format_exception
 from typing import Iterable
+
+from ._constants import SLACK_WEBHOOK_ENV_VAR
 from ._event import Event
+from ._log import LOG
 from ._redact import redact
 from ._destinations import SlackWebhookDestination
-from ._integrations import ShuutenJSONFormatter
+from ._integrations import (DropNoNotifyFilter,
+                            ShuutenJSONFormatter,
+                            SlackNotificationHandler)
 
 
 _NOTIFIER: Notifier | None = None
 _APP_NAME: str | None = None
 _ENV: str | None = None
-_HANDLER: Handler | None = None
-
-WEBHOOK_ENV_NAME = 'SLACK_WEBHOOK_URL'
+_HANDLERS: list[Handler] | None = None
 
 
-# HOW Would this look?? If i want to fire above certain level
-class SlackNotificationHandler(Handler):
-    __slots__ = ('_min_lvl', )
+def setup(app_name: str,
+          *,
+          env: str = 'dev',
+          min_lvl: str | int = ERROR,
+          enable_slack_log_handler=True,
+          logger_name: str | None = None,
+          configure_root: bool = False,
+          **kwargs) -> Logger:
 
-    def __init__(self, min_level: str):
-        super().__init__()
-        self._min_lvl = min_level
+    init(
+        app_name=app_name,
+        env=env,
+        min_lvl=min_lvl,
+        enable_slack_log_handler=enable_slack_log_handler,
+        **kwargs,
+    )
 
-    def filter(self, record):
-        ...
+    return get_logger(logger_name, configure_root)
 
 
 def init(app_name: str | None = None,
          env: str | None = 'dev',
-         formatter: type[Formatter] = ShuutenJSONFormatter):
+         formatter: type[Formatter] = ShuutenJSONFormatter,
+         min_lvl: str | int = ERROR,
+         enable_slack_log_handler=True,
+         reset: bool = False):
     """
     auto-detect destinations via env vars
     """
-    global _APP_NAME, _ENV, _HANDLER, _NOTIFIER
+    global _APP_NAME, _ENV, _HANDLERS, _NOTIFIER
+
+    # Skip on Lambda warm start
+    if _HANDLERS is not None and not reset:
+        return
 
     _APP_NAME = app_name
     _ENV = env
 
-    _HANDLER = StreamHandler()
-    _HANDLER.setFormatter(formatter())
+    _filter = DropNoNotifyFilter()
+
+    handler = StreamHandler()
+    handler.addFilter(_filter)
+    handler.setFormatter(formatter())
+
+    _HANDLERS = [handler]
 
     destinations = []
-    if hook_url := os.environ.get(WEBHOOK_ENV_NAME):
+    if hook_url := os.environ.get(SLACK_WEBHOOK_ENV_VAR):
+        LOG.debug('Found slack webhook %s', hook_url)
         destinations.append(SlackWebhookDestination(webhook_url=hook_url))
 
     _NOTIFIER = Notifier(
@@ -56,14 +78,38 @@ def init(app_name: str | None = None,
         destinations=destinations
     )
 
+    if enable_slack_log_handler and destinations:
+        slack_handler = SlackNotificationHandler(
+            _NOTIFIER,
+            workflow='logs',
+            env=_ENV,
+            min_level=min_lvl,
+        )
+        slack_handler.addFilter(_filter)
+        _HANDLERS.append(slack_handler)
 
-def get_logger(name: str | None = None):
+
+def get_logger(name: str | None = None,
+               configure_root: bool = False):
     """
     JSON formatter + handler once
     """
+    if _HANDLERS is None:
+        raise RuntimeError('shuuten.init() must be called '
+                           'before shuuten.get_logger()')
+
+    if name is None and not configure_root:
+        raise RuntimeError('Refusing to mutate root logger '
+                           'formatting until configure_root=True')
+
     log = getLogger(name)
-    log.addHandler(_HANDLER)
+
+    for handler in _HANDLERS:
+        if handler not in log.handlers:
+            log.addHandler(handler)
+
     log.setLevel(DEBUG)
+    log.propagate = False
 
     return log
 
@@ -140,7 +186,7 @@ class Notifier:
 
         # 1. local log (CloudWatch)
         if self._enable_local_logging:
-            payload = {
+            payload = redact({
                 'app': self._app_name,
                 'level': event.level,
                 'title': event.title,
@@ -151,13 +197,11 @@ class Notifier:
                 'subject_id': event.subject_id,
                 'source': event.source,
                 'log_url': event.log_url,
-                'context': redact(event.context),
-            }
+                'context': event.context,
+            })
             # log as structured dict (formatter can JSON-dump it)
-            (getattr(self._logger, event.level) or self._logger.error)(
-                event.title,
-                extra={'shuuten': payload},
-            )
+            log_fn = getattr(self._logger, event.level, self._logger.error)
+            log_fn(event.title, extra={'shuuten': payload, 'shuuten_no_notify': True})
 
         # 2. Destinations
         for d in self._destinations:

@@ -19,7 +19,7 @@ class SlackWebhookDestination:
         self.username = username
 
     def send(self, event: Event, *, exc_text: Optional[str] = None) -> None:
-        safe = {
+        safe = redact({
             'title': event.title,
             'level': event.level,
             'workflow': event.workflow,
@@ -29,9 +29,9 @@ class SlackWebhookDestination:
             'subject_id': event.subject_id,
             'source': event.source,
             'log_url': event.log_url,
-            'context': redact(event.context),
-            'exception': redact(exc_text),
-        }
+            'context': event.context,
+            'exception': exc_text,
+        })
 
         # simple text payload (Block Kit later)
         text = (
@@ -45,6 +45,8 @@ class SlackWebhookDestination:
             text += f"*logs*: {safe['log_url']}\n"
         if safe.get('exception'):
             text += f"```{safe['exception']}```"
+        if 'msg' in safe['context']:
+            text += f"*msg*: ```{safe['context']['msg']}```"
 
         payload = {'text': text}
         if self.username:
