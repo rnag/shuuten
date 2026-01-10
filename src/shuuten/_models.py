@@ -6,6 +6,8 @@ from time import time
 from typing import Any
 from uuid import uuid4
 
+from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
+
 
 @dataclass(slots=True)
 class Event:
@@ -24,7 +26,7 @@ class Event:
     context: dict[str, Any] = field(default_factory=dict)
 
     # links / metadata
-    source: str | None = None       # 'lambda:funcname' or 'ecs:cluster/service'
+    source: dict[str, Any] = field(default_factory=dict)
     log_url: str | None = None      # deep link to CW (optional)
 
 
@@ -47,13 +49,63 @@ class RuntimeContext:
     cluster_name: str | None
     task_arn: str | None
 
+    @property
+    def function_url(self):
+        if self.function_name and self.region:
+            return lambda_console_link(self.region, self.function_name)
+        return None
+
+    @property
+    def log_url(self):
+        if self.region and self.log_group:
+            if self.log_stream:
+                return cloudwatch_log_stream_link(
+                    self.region, self.log_group, self.log_stream)
+            else:
+                return cloudwatch_log_stream_link(
+                    self.region, self.log_group)
+        return None
+
+    @property
+    def base_source(self) -> dict[str, Any]:
+        src = {
+            'platform': self.platform,
+            'function_name': self.function_name,
+            'region': self.region,
+            'log_group': self.log_group,
+            'cluster': self.cluster_name,
+            'task_arn': self.task_arn,
+            'account_name': self.account_name,
+            'account_id': self.account_id,
+            'source_code': self.source_code,
+        }
+        return {k: v for k, v in src.items() if v is not None}
+
+    def enrich_event_source(self, event: Event):
+        # Fill event.source / log_url if missing
+        if not event.source:
+            event.source = self.base_source.copy()
+            # unique to each invocation
+            if self.request_id:
+                event.source['request_id'] = self.request_id
+            if self.log_stream:
+                event.source['log_stream'] = self.log_stream
+
+        # Link to AWS Lambda function
+        if fn_url := self.function_url:
+            event.source['function_url'] = fn_url
+
+        # Canonical Link to CloudWatch Logs
+        if not event.log_url and (log_url := self.log_url):
+            event.log_url = log_url
+
 
 def sniff_region() -> str | None:
     # AWS Region, should be automatically set for AWS Lambda functions
-    return getenv('AWS_REGION') or getenv('AWS_DEFAULT_REGION', 'us-east-1')
+    return getenv('AWS_REGION') or getenv('AWS_DEFAULT_REGION')
 
 
-def from_lambda_context(context: Any, *, service: str | None = None) -> RuntimeContext:
+def from_lambda_context(context: Any) -> RuntimeContext:
     region = sniff_region()
 
     account_name = getenv('AWS_ACCOUNT_NAME')
@@ -85,7 +137,7 @@ def from_lambda_context(context: Any, *, service: str | None = None) -> RuntimeC
     )
 
 
-# def from_ecs(*, env: str | None = None) -> RuntimeContext | None:
+# def from_ecs() -> RuntimeContext | None:
 #     base = getenv('ECS_CONTAINER_METADATA_URI_V4')
 #     if not base:
 #         return None

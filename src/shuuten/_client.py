@@ -6,8 +6,6 @@ from os import getenv
 from traceback import format_exception
 from typing import Iterable
 
-from . import set_lambda_context
-from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
 from ._constants import SLACK_WEBHOOK_ENV_VAR, SLACK_MIN_LVL_ENV_VAR
 from ._destinations import SlackWebhookDestination, SLACK_FORMAT_TYPE
 from ._integrations import (ShuutenContextFilter,
@@ -16,14 +14,13 @@ from ._integrations import (ShuutenContextFilter,
 from ._log import LOG
 from ._models import Event
 from ._redact import redact
-from ._runtime import get_runtime_context, reset_runtime_context
+from ._runtime import (get_runtime_context,
+                       set_lambda_context,
+                       reset_runtime_context)
 
 
 _NOTIFIER: Notifier | None = None
-# _APP_NAME: str | None = None
-# _ENV: str | None = None
 _HANDLERS: list[Handler] | None = None
-_INIT: bool = False
 
 
 def setup(app_name: str,
@@ -58,10 +55,10 @@ def init(app_name: str | None = None,
     """
     auto-detect destinations via env vars
     """
-    global _INIT, _HANDLERS, _NOTIFIER
+    global _HANDLERS, _NOTIFIER
 
     # Skip on Lambda warm start
-    if _INIT and not reset:
+    if _HANDLERS is not None and not reset:
         return
 
     min_lvl = getenv(SLACK_MIN_LVL_ENV_VAR, min_lvl)
@@ -100,9 +97,6 @@ def init(app_name: str | None = None,
             min_level=min_lvl,
         )
         _HANDLERS.append(slack_handler)
-
-    # set initialized to `true`
-    _INIT = True
 
 
 def get_logger(name: str | None = None,
@@ -184,6 +178,17 @@ def catch(
 
 
 class Notifier:
+    """
+    Shuuten notifier.
+
+    The notifier:
+        * is a single choke point called by Shuuten
+          Handler(s) (ex. SlackNotificationHandler)
+        * enriches Event `source` / `log_url` from runtime context
+        * sends to pre-configured destinations
+          (ex. SlackWebhookDestination)
+
+    """
     __slots__ = (
         '_app_name',
         '_logger',
@@ -206,8 +211,6 @@ class Notifier:
         logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
-        # TODO maybe run this logic once instead of every time
-
         # TODO if no context is explicitly set:
         #   detect Lambda by AWS_LAMBDA_FUNCTION_NAME
         #   detect ECS by ECS_CONTAINER_METADATA_URI_V4
@@ -215,37 +218,8 @@ class Notifier:
 
         # If we have a RuntimeContext, enrich source / log_url here
         rt = get_runtime_context()
-
         if rt:
-            # TODO seems expensive to run this each time
-
-            # Fill event.source / log_url if missing
-            if not event.source:
-                event.source = {
-                    'platform': rt.platform,
-                    'function_name': rt.function_name,
-                    'request_id': rt.request_id,
-                    'region': rt.region,
-                    'log_group': rt.log_group,
-                    'log_stream': rt.log_stream,
-                    'cluster': rt.cluster_name,
-                    'task_arn': rt.task_arn,
-                    'account_name': rt.account_name,
-                    'account_id': rt.account_id,
-                    'source_code': rt.source_code,
-                }
-
-            if rt.function_name and rt.region:
-                event.source['function_url'] = lambda_console_link(rt.region, rt.function_name)
-
-            # TODO might move this out
-            # for canonical log_url
-            if not event.log_url and rt.region and rt.log_group:
-                # pick most relevant
-                if rt.log_stream:
-                    event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group, rt.log_stream)
-                else:
-                    event.log_url = cloudwatch_log_stream_link(rt.region, rt.log_group)
+            rt.enrich_event_source(event)
 
         exc_text = None
         if exc is not None:

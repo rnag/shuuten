@@ -6,7 +6,6 @@ from json import dumps
 from logging import ERROR, Formatter, Handler, LogRecord
 from time import time
 
-from .._aws_links import cloudwatch_log_stream_link
 from .._log import LOG
 from .._models import Event
 from .._redact import redact
@@ -34,6 +33,11 @@ class SlackNotificationHandler(Handler):
     Forwards ERROR+ log records to the global Shuuten notifier (or a passed-in notifier).
 
     Intended for "oops" paths; keep level high (ERROR/CRITICAL) to avoid spam.
+
+    The handler should only:
+        * decide "should I send?"
+        * build `Event` with message / context
+        * pass `Exception` if present
     """
 
     def __init__(
