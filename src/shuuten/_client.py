@@ -166,11 +166,13 @@ def get_logger(name: str | None = None,
 
 
 def capture(
+    _fn=None,
+    *,
+    config: ShuutenConfig | None = None,
     workflow: str | None = None,
     platform: Platform = Platform.AUTO,
     summary: str = 'Automation failed',
     action: str | None = None,
-    *,
     notifier: Notifier | None = None,
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
     context_getter=None,  # fn(args, kwargs) -> dict
@@ -183,6 +185,7 @@ def capture(
     notifies configured destinations. Exceptions are re-raised
     by default.
     """
+    init(config)  # Initialize config (or from env if config=None) if needed
     notifier = notifier or _NOTIFIER
 
     def deco(fn):
@@ -221,7 +224,7 @@ def capture(
 
         return wrapper
 
-    return deco
+    return deco(_fn) if _fn else deco
 
 
 # alias: for people who just want a decorator and don't care about semantics.

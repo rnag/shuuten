@@ -7,11 +7,9 @@ import urllib.request
 from os import getenv
 from typing import Any
 
-from ._constants import CA_BUNDLE_ENV_VAR
-
 
 def _ssl_context_from_env():
-    cafile = getenv(CA_BUNDLE_ENV_VAR) or getenv('SSL_CERT_FILE')
+    cafile = getenv('SHUUTEN_CA_BUNDLE') or getenv('SSL_CERT_FILE')
     if cafile:
         ctx = ssl.create_default_context(cafile=cafile)
         return ctx
