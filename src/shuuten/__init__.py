@@ -26,18 +26,16 @@ __all__ = [
 ]
 
 from logging import Logger, NullHandler
-from os import getenv
 
 from ._client import Notifier, setup, capture, init, get_logger, wrap
-from ._constants import ENV_ENV_VAR
+from ._destinations import SlackWebhookDestination
+from ._integrations import ShuutenJSONFormatter
 from ._log import LOG
-from ._models import from_lambda_context
+from ._models import from_lambda_context, ShuutenConfig
 from ._requests import send_to_slack
 from ._runtime import (set_lambda_context,
                        set_runtime_context,
                        reset_runtime_context)
-from ._destinations import SlackWebhookDestination
-from ._integrations import ShuutenJSONFormatter
 
 
 _log: Logger | None = None
@@ -60,10 +58,16 @@ def _get_shuuten_logger() -> Logger:
         return _log
 
     # Lazy init with safe defaults
-    init(app_name='shuuten', env=getenv(ENV_ENV_VAR) or 'dev')
-    _log = get_logger('shuuten', configure_root=False)
 
-    return _log
+    config = ShuutenConfig.from_env()
+    if config.app is None:
+        config.app = 'shuuten'
+    if config.env is None:
+        config.env = 'dev'
+
+    init(config)
+
+    return get_logger('shuuten', configure_root=False)
 
 
 def critical(msg, *args, **kwargs):

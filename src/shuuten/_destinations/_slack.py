@@ -1,13 +1,9 @@
 from __future__ import annotations
 
 import json
-from typing import Literal
 
-from .._models import Event
+from .._models import Event, SLACK_FORMAT_TYPE
 from .._requests import send_to_slack
-
-
-SLACK_FORMAT_TYPE = Literal['blocks', 'plain']
 
 
 def slack_blocks_for_event(event: Event) -> list[dict]:

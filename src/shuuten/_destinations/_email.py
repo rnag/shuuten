@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape as h
 
 import boto3
 
@@ -18,17 +19,11 @@ def _level_color(level: str) -> str:
     }.get(level, '#8B0000')
 
 
-def split_emails(value: str | None) -> list[str]:
-    if not value:
-        return []
-    return [x.strip() for x in value.split(',') if x.strip()]
-
-
 def _subject_for_event(event: Event) -> str:
-    lvl = event.level
-    env = event.env
-    wf = event.workflow
-    action = event.action
+    lvl = event.level or 'ERROR'
+    env = event.env or '-'
+    wf = event.workflow or '-'
+    action = event.action or '-'
     return f'{lvl} {env} {wf}: {action}'
 
 
@@ -64,6 +59,10 @@ def _html_body(event: Event) -> str:
     # Keep it simple (no external fonts/css needed)
     # Email clients are picky; inline-ish styling is safer.
 
+    esc_env = h(event.env or '')
+    esc_action = h(event.action or '')
+    esc_workflow = h(event.workflow or '')
+
     def row(k: str, v: str) -> str:
         return f"""
         <tr>
@@ -74,27 +73,27 @@ def _html_body(event: Event) -> str:
 
     meta_rows = ''.join([
         row('Level', event.level),
-        row('Env', event.env),
-        row('Workflow', event.workflow),
-        row('Action', event.action),
-        row('Run ID', event.run_id),
+        row('Env', esc_env),
+        row('Workflow', esc_workflow),
+        row('Action', esc_action),
+        row('Run ID', h(event.run_id)),
         row('Timestamp', str(event.timestamp)),
     ])
 
     links = ''
     if event.log_url:
-        links += f'<div style="margin:6px 0;"><a href="{event.log_url}">CloudWatch Logs</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(event.log_url)}">CloudWatch Logs</a></div>'
     src = event.source
     if isinstance(src, dict) and src.get('function_url'):
-        links += f'<div style="margin:6px 0;"><a href="{src["function_url"]}">Lambda</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(src["function_url"])}">Lambda</a></div>'
     if isinstance(src, dict) and src.get('source_code'):
-        links += f'<div style="margin:6px 0;"><a href="{src["source_code"]}">Source</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(src["source_code"])}">Source</a></div>'
 
     # Render source/context tables compactly
     def table_from_dict(d: dict) -> str:
         if not d:
             return '<i>none</i>'
-        rows = ''.join(row(str(k), str(v)) for k, v in d.items())
+        rows = ''.join(row(h(str(k)), h(str(v))) for k, v in d.items())
         return ('<table style="border-collapse:collapse;width:100%;'
                 f'background:#fff;border:1px solid #eee;">{rows}</table>')
 
@@ -105,21 +104,33 @@ def _html_body(event: Event) -> str:
             exc = exc[-12000:]
         exc_block = f"""
         <h3 style='margin:16px 0 8px 0;'>Exception</h3>
-        <pre style='white-space:pre-wrap;background:#0b0b0b;color:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;overflow:auto;'>{exc}</pre>
+        <pre style='white-space:pre-wrap;background:#0b0b0b;color:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;overflow:auto;'>{h(exc)}</pre>
         """
 
     color = _level_color(event.level)
+
+    msg_block = ""
+    if event.message:
+        msg = event.message
+        if len(msg) > 4000:
+            msg = msg[:4000] + "\n…(truncated)…"
+        msg_block = f"""
+          <h3 style="margin:16px 0 8px 0;">Message</h3>
+          <pre style="white-space:pre-wrap;background:#f2f3f5;color:#111;
+    padding:12px;border-radius:6px;font-size:12px;overflow:auto;">{h(msg)}</pre>
+        """
 
     return f"""
     <html>
       <body style="font-family:Arial, sans-serif;background:#f6f7f9;padding:16px;">
         <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e6e6e6;border-radius:10px;overflow:hidden;">
           <div style="background:{color};color:#fff;padding:12px 16px;">
-            <div style="font-size:16px;font-weight:700;">{event.summary}</div>
-            <div style="font-size:12px;opacity:0.9;">{event.level} · {event.env} · {event.workflow} · {event.action}</div>
+            <div style="font-size:16px;font-weight:700;">{h(event.summary)}</div>
+            <div style="font-size:12px;opacity:0.9;">{event.level} · {esc_env} · {esc_workflow} · {esc_action}</div>
           </div>
 
           <div style="padding:16px;">
+            {msg_block}
             <h3 style="margin:0 0 8px 0;">Summary</h3>
             <table style="border-collapse:collapse;width:100%;background:#fff;border:1px solid #eee;">
               {meta_rows}

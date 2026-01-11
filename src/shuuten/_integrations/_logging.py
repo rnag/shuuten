@@ -43,10 +43,9 @@ class SlackNotificationHandler(Handler):
         self,
         notifier,  # Notifier
         *,
-        workflow: str,
-        env: str | None = None,
         min_level: str | int = ERROR,
-        summary: str = 'Automation error',
+        workflow='logs',
+        default_summary: str = 'Log forwarded',
         include_stack: bool = True,
         context_getter=None,  # fn(record) -> dict
         dedupe_window_s: float = 30.0,
@@ -58,8 +57,7 @@ class SlackNotificationHandler(Handler):
         super().__init__(level=min_level)  # logging will filter by level for us
         self._notifier = notifier
         self._workflow = workflow
-        self._env = env
-        self._summary = summary
+        self._default_summary = default_summary
         self._include_stack = include_stack
         self._context_getter = context_getter
         self._dedupe_window_s = dedupe_window_s
@@ -105,25 +103,19 @@ class SlackNotificationHandler(Handler):
             })
 
             level = record.levelname.lower()
-            action = record.name  # Prefer logger name as 'action'
-
-            if record.exc_info:
-                exc = record.exc_info[1]
-                summary = self._summary
-            else:
-                exc = None
-                summary = 'Log forwarded'
+            action = record.name
 
             event = Event(
                 level=level,
-                summary=summary,
+                summary=self._default_summary,
                 message=msg,
                 workflow=self._workflow,
                 action=action,
-                env=self._env,
+                env=None,
                 context=context,
             )
 
+            exc = record.exc_info[1] if record.exc_info else None
             if exc is None and self._include_stack and record.stack_info:
                 # treat stack_info as part of context
                 event.context['stack'] = record.stack_info

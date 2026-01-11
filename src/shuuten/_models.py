@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field, fields, replace, MISSING
 from enum import Enum
+from logging import WARNING, ERROR
 from os import getenv
 from time import time
-from typing import Any
+from typing import Any, cast, Literal
 from uuid import uuid4
 
 from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
+from ._env_helpers import split_emails
 from ._log import LOG
 from ._redact import redact
 from ._requests import http_get_json
@@ -17,10 +19,106 @@ def _redact_optional(s: str | None) -> str | None:
     return redact(s) if s else None
 
 
+SLACK_FORMAT_TYPE = Literal['blocks', 'plain']
+
+
 class Platform(str, Enum):
     AUTO = 'auto'
     LAMBDA = 'lambda'
     ECS = 'ecs'
+
+
+@dataclass(slots=True)
+class ShuutenConfig:
+    app: str | None = None
+    env: str | None = None
+
+    emit_local_log: bool = True
+    quiet_level: int | None = WARNING
+    # Slack webhook
+    slack_webhook_url: str | None = None
+    slack_format: SLACK_FORMAT_TYPE = 'blocks'
+
+    # Minimum log level for messages sent to Slack
+    min_level: int = ERROR
+
+    # SES outbound email address
+    ses_from: str | None = None
+    # Comma-delimited field, if provided will send stylized HTML to them
+    #
+    # Example:
+    #   'user1@my.domain.org,user2@my.domain.org'
+    ses_to: list[str] = field(default_factory=list)
+    ses_reply_to: list[str] = field(default_factory=list)
+    ses_region: str | None = None
+
+    def with_env_defaults(self) -> ShuutenConfig:
+        cfg = ShuutenConfig.from_env()
+        return cfg.overlay(self)
+
+    def overlay(self, other: ShuutenConfig) -> ShuutenConfig:
+        """
+        Return a new config where `other` overrides `self`.
+        Semantics:
+          - quiet_level: None is an explicit override meaning "disable"
+          - strings: None means "no override"
+          - lists: empty list means "no override" (see note)
+          - bool/int: always override if different? (we handle explicitly)
+        """
+        out = replace(self)
+
+        # Scalars: None => no override
+        # Strings with defaults: override if not None (even if "")
+        # Int policy: always override (min_level is not Optional)
+        for name in ('app', 'env', 'slack_webhook_url', 'ses_from',
+                     'ses_region', 'slack_format', 'min_level'):
+            v = getattr(other, name)
+            if v is not None:
+                setattr(out, name, v)
+
+        # quiet_level: None is meaningful (explicit disable)
+        # so we must always take it when user passes it.
+        #
+        # Problem: can't tell if they passed it explicitly.
+        # Solution: require user to pass quiet_level explicitly when calling init,
+        # or move to UNSET sentinel for full correctness.
+        out.quiet_level = other.quiet_level
+
+        # Lists: treat empty as "no override"
+        if other.ses_to:
+            out.ses_to = list(other.ses_to)
+        if other.ses_reply_to:
+            out.ses_reply_to = list(other.ses_reply_to)
+
+        # Bool: override
+        out.emit_local_log = other.emit_local_log
+
+        return out
+
+    @classmethod
+    def from_env(cls) -> ShuutenConfig:
+        # TODO maybe Enum
+        slack_format = cast(SLACK_FORMAT_TYPE, getenv('SHUUTEN_SLACK_FORMAT', 'blocks'))
+        min_lvl_from_env = getenv('SHUUTEN_MIN_LEVEL')
+        emit_local_log_from_env = getenv('SHUUTEN_EMIT_LOCAL_LOG')
+        emit_local_log = True if (
+            emit_local_log_from_env is None
+            or emit_local_log_from_env.upper() in ('1', 'TRUE', 'YES')
+        ) else False
+
+        return cls(
+            app=getenv('SHUUTEN_APP'),
+            env=getenv('SHUUTEN_ENV'),
+            emit_local_log=emit_local_log,
+            quiet_level=getenv('SHUUTEN_QUIET_LEVEL', WARNING),
+            min_level=int(min_lvl_from_env) if min_lvl_from_env else ERROR,
+            slack_webhook_url=getenv('SHUUTEN_SLACK_WEBHOOK_URL'),
+            slack_format=slack_format,
+            ses_from=getenv('SHUUTEN_SES_FROM'),
+            ses_to=split_emails(getenv('SHUUTEN_SES_TO')),
+            ses_reply_to=split_emails(getenv('SHUUTEN_SES_REPLY_TO')),
+            ses_region=getenv('SHUUTEN_SES_REGION'),
+        )
 
 
 @dataclass(slots=True)
@@ -85,6 +183,7 @@ class RuntimeContext:
     account_id: str | None
     # from env
     account_name: str | None
+    # Optional link to source code repo for the project
     source_code: str | None
 
     # Lambda

@@ -1,2 +1,2 @@
-from ._email import SESDestination, split_emails
-from ._slack import SLACK_FORMAT_TYPE, SlackWebhookDestination
+from ._email import SESDestination
+from ._slack import SlackWebhookDestination
