@@ -1,6 +1,7 @@
-from logging import ERROR
 from os import getenv
 
+
+ENV_ENV_VAR = 'SHUUTEN_ENV'
 
 # Minimum level for library logs, to show up in CloudWatch
 # LOG_CFG = getenv('SHUUTEN_LOG_CFG')
@@ -32,6 +33,9 @@ SES_REGION_ENV_VAR = 'SHUUTEN_SES_REGION'
 
 # Optional link to source code repo for the project
 # SOURCE_CODE = getenv('SOURCE_CODE')
+
+# SSL Cert bundle (optional)
+CA_BUNDLE_ENV_VAR = 'SHUUTEN_CA_BUNDLE'
 
 # Local time zone
 LOCAL = 'LOCAL_TZ'

@@ -1,9 +1,21 @@
 """Slack webhook utilities for Shuuten."""
 
 import json
+import ssl
 import urllib.error
 import urllib.request
+from os import getenv
 from typing import Any
+
+from ._constants import CA_BUNDLE_ENV_VAR
+
+
+def _ssl_context_from_env():
+    cafile = getenv(CA_BUNDLE_ENV_VAR) or getenv('SSL_CERT_FILE')
+    if cafile:
+        ctx = ssl.create_default_context(cafile=cafile)
+        return ctx
+    return None
 
 
 def http_get_json(url) -> dict[str, Any]:
@@ -31,6 +43,7 @@ def send_to_slack(webhook_url: str, payload: dict) -> None:
     """
     data = json.dumps(payload).encode('utf-8')
 
+    ctx = _ssl_context_from_env()
     req = urllib.request.Request(
         webhook_url,
         method='POST',
@@ -39,7 +52,7 @@ def send_to_slack(webhook_url: str, payload: dict) -> None:
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
             r = resp.read()
             if resp.status >= 400:
                 body = r.decode('utf-8', errors='replace')

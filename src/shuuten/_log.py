@@ -1,5 +1,6 @@
 from logging import getLogger, WARNING
 
+
 LOG = getLogger('shuuten')
 
 
