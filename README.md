@@ -26,8 +26,8 @@ import shuuten
 
 @shuuten.capture
 def lambda_handler(event, context):
-    shuuten.debug("debug info")      # not sent
-    shuuten.error("domain error")    # sent to Slack
+    shuuten.debug('debug info')      # not sent
+    shuuten.error('domain error')    # sent to Slack
     1 / 0                            # sent with stack trace
 ```
 
@@ -60,8 +60,8 @@ pip install shuuten
 import shuuten
 
 def handler(event, context):
-    shuuten.info("hello")        # not sent
-    shuuten.error("bad input")   # sent to Slack
+    shuuten.info('hello')        # not sent
+    shuuten.error('bad input')   # sent to Slack
 ```
 
 ### Explicit logger + email notifications
@@ -69,12 +69,12 @@ def handler(event, context):
 ```python
 import shuuten
 
-shuuten.init(shuuten.ShuutenConfig(app="my-app", env="dev"))
+shuuten.init(shuuten.ShuutenConfig(app='my-app', env='dev'))
 log = shuuten.get_logger(__name__)
 
-@shuuten.capture(workflow="my-workflow")
+@shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical("Something went wrong")  # sent to Slack + Email
+    log.critical('Something went wrong')  # sent to Slack + Email
 ```
 
 ### Manual context control (advanced)
@@ -97,7 +97,7 @@ def handler(event, context):
 You can configure Shuuten via `ShuutenConfig` in code **or** environment variables.
 
 | Variable                  | Description                                       | Default   |
-| ------------------------- | ------------------------------------------------- | --------- |
+|---------------------------|---------------------------------------------------|-----------|
 | `SHUUTEN_APP`             | Application name (used for grouping/metadata)     | auto      |
 | `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.) | auto      |
 | `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                | `ERROR`   |
@@ -108,14 +108,14 @@ You can configure Shuuten via `ShuutenConfig` in code **or** environment variabl
 ### Slack
 
 | Variable                    | Description                |
-| --------------------------- | -------------------------- |
+|-----------------------------|----------------------------|
 | `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
 | `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
 
 ### Email (SES)
 
 | Variable               | Description                    |
-| ---------------------- | ------------------------------ |
+|------------------------|--------------------------------|
 | `SHUUTEN_SES_FROM`     | Verified SES sender            |
 | `SHUUTEN_SES_TO`       | Comma-separated recipient list |
 | `SHUUTEN_SES_REPLY_TO` | Optional reply-to address      |

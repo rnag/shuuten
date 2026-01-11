@@ -12,6 +12,7 @@ theme:
     - navigation.instant
     - navigation.top
     - navigation.footer
+    - content.code.copy
     # - content.action.edit   # adds "Edit on GitHub"
     # - content.action.view   # adds "View source"
   palette:
@@ -33,6 +34,8 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - codehilite
+  - pymdownx.highlight
+  - pymdownx.superfences
   - toc:
       permalink: true
 
