@@ -34,7 +34,8 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - codehilite
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      anchor_linenums: true
   - pymdownx.superfences
   - toc:
       permalink: true

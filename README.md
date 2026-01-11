@@ -125,6 +125,8 @@ You can configure Shuuten via `ShuutenConfig` in code **or** environment variabl
 
 * **Slack** (Incoming Webhooks)
 * **Email** (AWS SES)
+  > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
+  See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
 
 ## Roadmap
 
