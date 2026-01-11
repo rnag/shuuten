@@ -1,8 +1,8 @@
 ![Shuuten logo](https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png){ width="175" style="display:block;margin:auto;" }
 
-## Shuuten Signal {: style="text-align:center;" }
-
 <div style="text-align:center" markdown>
+
+#### Shuuten Signal — Last-stop signals for automation failures.
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)

@@ -1,7 +1,7 @@
 <div align="center">
 <img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
 
-## Shuuten Signal
+**Shuuten Signal — Last-stop signals for automation failures.**
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
@@ -13,31 +13,30 @@
 
 <!--intro-start-->
 
-**Last-stop signals for automation failures.**
+**Shuuten** sends structured Slack and Email alerts when your Python automations fail – especially in AWS Lambda and ECS – with minimal setup and zero dependencies.
 
-*終点 (Shuuten) means “final stop” or “terminus” in Japanese — the point where a workflow ends and signals that something needs attention.*
+> *終点 (Shūten) means "final stop" in Japanese — the point where a workflow ends and signals that something needs attention.*
 
-> 終点 (Shuuten): the final stop — where automations end and signal for attention.
-
-📖 Docs: [shuuten.ritviknag.com](https://shuuten.ritviknag.com) · ⭐ Star: [GitHub](https://github.com/rnag/shuuten)
+📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
 
 ---
 
-**Batteries included, zero-dependency, and lightweight.**
+### Quick example (AWS Lambda)
 
-AWS Lambda example --
-`export SHUUTEN_SLACK_WEBHOOK_URL='...'` (as per [docs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)) before.
-
-```python3
+```python
 import shuuten
 
-@shuuten.capture  # or: capture(workflow='my-example-lambda')
+@shuuten.capture
 def lambda_handler(event, context):
-    shuuten.debug('test')  # not sent to Slack
-    shuuten.error('AN ERROR!')  # ERROR+: by default sent to Slack + email if configured
-    shuuten.warning("Calling other_func", extra={"shuuten": {"caller": "my_fn"}})  # not sent
-    shuuten.info('TEST', stack_info=True)  # not sent
-    1 / 0   # sends to Slack + email with trace
+    shuuten.debug("debug info")      # not sent
+    shuuten.error("domain error")    # sent to Slack
+    1 / 0                            # sent with stack trace
+```
+
+Set one env var and you’re done (see [Slack docs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
+
+```bash
+export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 ```
 
 ## About
