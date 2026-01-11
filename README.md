@@ -1,7 +1,7 @@
 <div align="center">
-<img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
+<img alt="logo" width="160" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
 
-**Shuuten Signal — Last-stop signals for automation failures.**
+**Shuuten Signal — last-stop signals for automation failures**
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
@@ -13,15 +13,13 @@
 
 <!--intro-start-->
 
-**Shuuten** sends structured Slack and Email alerts when your Python automations fail – especially in AWS Lambda and ECS – with minimal setup and zero dependencies.
+**Shuuten sends structured Slack and email alerts** when your Python automations fail — especially in AWS Lambda and ECS — with minimal setup and zero dependencies.
 
-> *終点 (Shūten) means "final stop" in Japanese — the point where a workflow ends and signals that something needs attention.*
+*終点 (Shūten) means "final stop" in Japanese — the point where a workflow ends and signals that something needs attention.*
 
 📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
 
----
-
-### Quick example (AWS Lambda)
+### Quick start (AWS Lambda)
 
 ```python
 import shuuten
@@ -33,68 +31,54 @@ def lambda_handler(event, context):
     1 / 0                            # sent with stack trace
 ```
 
-Set one env var and you’re done (see [Slack docs](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
+Set one environment variable and you’re done
+(see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
 
 ```bash
 export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 ```
 
-## About
+## Why Shuuten?
 
-Shuuten Signal provides structured, safe failure notifications for Python automations running in AWS Lambda, ECS, and beyond.
+* **Built for failure paths** — only `ERROR+` signals are sent by default
+* **Zero dependencies** — no SDKs, agents, or background workers
+* **Designed for AWS** — Lambda, ECS tasks, and containers work out of the box
+* **Logging-native** — uses familiar `logging` semantics
+* **Opinionated but minimal** — small surface area, easy to reason about
 
-## Features
+## Installation
 
-- Dependency-free Slack Incoming Webhook notifications
-- Designed for AWS Lambda, ECS, and container-based automations
-- Configured for Destinations: (1) Slack and (2) Email via SES (more to come)
-- Minimal surface area, easy to extend
-
-## Install
-
-```shell
+```bash
 pip install shuuten
 ```
 
-## Usage
+## Usage patterns
 
-AWS Lambda, most "easy to get started" example, similar to `logging`:
-```python3
+### Structured logging (logging-style)
+
+```python
 import shuuten
 
-hook_url = "https://hooks.slack.com/services/<team>/<channel>/<token>"  # keep this secret
-payload = {'text': 'Hello from Shuuten 👋 (webhook test)'}
-
-def lambda_handler(event, context):
-    shuuten.debug('test')  # not sent to Slack
-    other_func()
-
-def other_func():
-    shuuten.error('AN ERROR!')  # ERROR+: by default sent to Slack if configured
-    shuuten.warning("Calling other_func", extra={"shuuten": {"caller": "my_fn"}})  # not sent
-    shuuten.info('TEST', stack_info=True)  # not sent
-    1 / 0  # sends to Slack with trace
+def handler(event, context):
+    shuuten.info("hello")        # not sent
+    shuuten.error("bad input")   # sent to Slack
 ```
 
-By default Shuuten emits a local structured log record whenever it sends a notification. Disable with `emit_local_log=False` if you only want external notifications.
+### Explicit logger + email notifications
 
-To send to email, set `SHUUTEN_SES_FROM` + `SHUUTEN_SES_TO` and grant necesary permissions to AWS Lambda or whatever task. Then:
-
-```python3
+```python
 import shuuten
 
-
-shuuten.init(shuuten.ShuutenConfig(app='my-app', env='dev'))
+shuuten.init(shuuten.ShuutenConfig(app="my-app", env="dev"))
 log = shuuten.get_logger(__name__)
 
-
-@shuuten.capture(workflow='my-sample-workflow')
+@shuuten.capture(workflow="my-workflow")
 def handler(event, context):
-    log.info('Hello world!')  # not sent
-    log.critical('Something went wrong! Help!')  # ERROR+: Sent to Slack + Email
+    log.critical("Something went wrong")  # sent to Slack + Email
 ```
 
-If you don't wanna use `capture()` decorator, then set/reset context manually for now (context manager coming soon!)
+### Manual context control (advanced)
+
 ```python
 import shuuten
 
@@ -106,42 +90,52 @@ def handler(event, context):
         shuuten.reset_runtime_context(token)
 ```
 
-The `capture()` decorator works for ECS Tasks too! It use the ECS Metadata endpoint v4.
+> The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
 
-## Config and Env Vars
+## Configuration
 
-Pass following config via `ShuutenConfig` as in `shuuten.init(config=...)` or else set in environment:
+You can configure Shuuten via `ShuutenConfig` in code **or** environment variables.
 
-* `SHUUTEN_APP` - App name, mostly unused...
-* `SHUUTEN_ENV` - Environment for AWS account (example: `prod | dev | staging | etc.`)
-* `SHUUTEN_EMIT_LOCAL_LOG` - true for Shuuten to notify / log internal logs (local only) (default: `True`)
-* `SHUUTEN_QUIET_LEVEL` - Quiet level for 3rd party libraries (such as botocore); defaults to `WARNING` if not set.
-* `SHUUTEN_MIN_LEVEL` - Minimum log level for messages sent to destination(s) (default: `ERROR`)
-* `SHUUTEN_SLACK_WEBHOOK_URL` - Slack webhook URL; If set, logs above `SHUUTEN_MIN_LEVEL` are sent to Slack
-* `SHUUTEN_SLACK_FORMAT` Slack format for messages, either Block Kit or plain text (default: `blocks`)
-* `SHUUTEN_SES_FROM` - SES identity or sender, must be verified in SES (example: `sender@my.domain.org`)
-* `SHUUTEN_SES_TO` (`list[str]`) - Comma-delimited field, if provided will send stylized HTML to them
-  * Example: `'user1@my.domain.org,user2@my.domain.org'`
-* `SHUUTEN_SES_REPLY_TO` - Optional `Reply-To` address (example: `reply-to@my.domain.org`)
-* `SHUUTEN_SES_REGION` - Optional AWS region
-* `SHUUTEN_DEDUPE_WINDOW_S` - Dedupe window for logs to Slack, in seconds (default: `30.0`)
+| Variable                  | Description                                       | Default   |
+| ------------------------- | ------------------------------------------------- | --------- |
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)     | auto      |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.) | auto      |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                | `ERROR`   |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying          | `true`    |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)        | `WARNING` |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Slack dedupe window (seconds); `0` disables       | `30`      |
 
-# Supported Destinations
+### Slack
 
-* **Slack** (requires `SHUUTEN_SLACK_WEBHOOK_URL`)
-* **Email** (requires `SHUUTEN_SES_FROM` and `SHUUTEN_SES_TO`)
+| Variable                    | Description                |
+| --------------------------- | -------------------------- |
+| `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
+| `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
 
-## Future Work (Planned)
+### Email (SES)
 
-* Send to AWS Teams and PagerDuty and other destinations
-* Maybe send to ElastiCache (ECS) too - not sure
-* Context manager for exceptions
-* Offer `exception_only: bool = False` to only send logs with `exc_info=True`
-* ECS Agent for more streamlined and performance-based error reporting
-* Support AWS EKS
+| Variable               | Description                    |
+| ---------------------- | ------------------------------ |
+| `SHUUTEN_SES_FROM`     | Verified SES sender            |
+| `SHUUTEN_SES_TO`       | Comma-separated recipient list |
+| `SHUUTEN_SES_REPLY_TO` | Optional reply-to address      |
+| `SHUUTEN_SES_REGION`   | Optional SES region            |
+
+## Supported destinations
+
+* **Slack** (Incoming Webhooks)
+* **Email** (AWS SES)
+
+## Roadmap
+
+* PagerDuty and other alerting destinations
+* Context manager for exception capture
+* Optional "exceptions-only" alerting mode
+* Expanded ECS and EKS support
 
 ## Credits
 
-This package was created with [Cookiecutter](https://github.com/audreyfeldroy/cookiecutter) and the [audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage) project template.
+Created with Cookiecutter using
+[https://github.com/audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage)
 
 <!--intro-end-->
