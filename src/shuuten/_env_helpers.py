@@ -14,6 +14,10 @@ def split_emails(value: str | None) -> list[str]:
     return [x.strip() for x in value.split(',') if x.strip()]
 
 
+def parse_float(v: str | None, *, default: float) -> float:
+    return default if v is None else float(v)
+
+
 def parse_enum(v: str | None, *, enum: type[E], default: E) -> E:
     if v is None:
         return default

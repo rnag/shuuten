@@ -135,7 +135,8 @@ def init(config: ShuutenConfig | None = None,
     if enable_slack_log_handler:
         slack_handler = SlackNotificationHandler(
             _NOTIFIER,
-            min_level=config.min_level
+            min_level=config.min_level,
+            dedupe_window_s=config.dedupe_window_s,
         )
         _HANDLERS.append(slack_handler)
 

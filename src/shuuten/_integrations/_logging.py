@@ -67,13 +67,17 @@ class SlackNotificationHandler(Handler):
         self.addFilter(DropInternalSlackNotifyFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
-        # Dedupe by message + call-site
+        if self._dedupe_window_s <= 0:
+            return True
+
         key_src = f'{record.name}:{record.filename}:{record.lineno}:{msg}'
         key = sha1(key_src.encode('utf-8')).hexdigest()
         now = time()
         last = self._last_sent.get(key)
+
         if last is not None and (now - last) < self._dedupe_window_s:
             return False
+
         self._last_sent[key] = now
         return True
 

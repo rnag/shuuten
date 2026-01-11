@@ -5,39 +5,31 @@ __author__ = """Ritvik Nag"""
 __email__ = 'me@ritviknag.com'
 
 __all__ = [
+    # base exports
     'setup',
     'init',
     'get_logger',
     # decorator(s)
     'capture',
     'wrap',
-    # optional (if catch is not used)
-    'set_lambda_context',
-    'set_runtime_context',
+    # optional (if capture is not used)
+    'detect_and_set_context',
     'reset_runtime_context',
-    # TODO remove
-    'send_to_slack',
-    # Logging functions
-    'log', 'debug', 'info', 'warning', 'debug',
-    'exception', 'critical', 'fatal',
-    # Classes
-    # 'Notifier',
-    # 'SESDestination',
-    # 'SlackWebhookDestination',
+    # logging functions
+    'log', 'debug', 'info', 'warning',
+    'error', 'exception', 'critical', 'fatal',
+    # classes
     'ShuutenJSONFormatter',
+    # version info
+    'version',
 ]
 
 from logging import Logger, NullHandler
 
-from ._api import setup, init, capture, wrap, get_logger
-from ._notifier import Notifier
-# from ._destinations import SESDestination, SlackWebhookDestination
+from ._api import setup, init, get_logger, capture, wrap
 from ._integrations import ShuutenJSONFormatter
 from ._log import LOG
-from ._models import from_lambda_context, ShuutenConfig
-from ._requests import send_to_slack
-from ._runtime import (set_lambda_context,
-                       set_runtime_context,
+from ._runtime import (detect_and_set_context,
                        reset_runtime_context)
 
 
@@ -49,28 +41,18 @@ LOG.addHandler(NullHandler())
 
 
 def version():
-    from importlib.metadata import version
-    __version__ = version('shuuten')
-    return __version__
+    from importlib.metadata import version as _version
+    return _version('shuuten')
 
 
 def _get_shuuten_logger() -> Logger:
     global _log
 
-    if _log is not None:
-        return _log
+    if _log is None:
+        init()
+        _log = get_logger('shuuten', configure_root=False)
 
-    # Lazy init with safe defaults
-
-    config = ShuutenConfig.from_env()
-    if config.app is None:
-        config.app = 'shuuten'
-    if config.env is None:
-        config.env = 'dev'
-
-    init(config)
-
-    return get_logger('shuuten', configure_root=False)
+    return _log
 
 
 def critical(msg, *args, **kwargs):

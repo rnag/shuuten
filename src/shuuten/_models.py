@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from logging import WARNING, ERROR
@@ -9,7 +10,7 @@ from typing import Any, Union
 from uuid import uuid4
 
 from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
-from ._env_helpers import split_emails, parse_level, parse_quiet, parse_bool, parse_enum
+from ._env_helpers import split_emails, parse_level, parse_quiet, parse_bool, parse_enum, parse_float
 from ._log import LOG
 from ._redact import redact, redact_optional
 from ._requests import http_get_json
@@ -57,6 +58,7 @@ class ShuutenConfig:
     ses_to: list[str] = field(default_factory=list)
     ses_reply_to: list[str] = field(default_factory=list)
     ses_region: str | None = None
+    dedupe_window_s: float = 30.0
 
     def with_env_defaults(self) -> ShuutenConfig:
         cfg = ShuutenConfig.from_env()
@@ -81,9 +83,9 @@ class ShuutenConfig:
 
         # Strings with defaults: always override
         out.slack_format = other.slack_format
-        # Int policy: always override (min_level is not optional)
+        # Bool/Float/Int: always override
         out.min_level = other.min_level
-        # Bool: override
+        out.dedupe_window_s = other.dedupe_window_s
         out.emit_local_log = other.emit_local_log
 
         # quiet_level: None is meaningful (explicit disable)
@@ -126,6 +128,10 @@ class ShuutenConfig:
             ses_to=split_emails(getenv('SHUUTEN_SES_TO')),
             ses_reply_to=split_emails(getenv('SHUUTEN_SES_REPLY_TO')),
             ses_region=getenv('SHUUTEN_SES_REGION'),
+            dedupe_window_s=parse_float(
+                os.getenv('SHUUTEN_DEDUPE_WINDOW_S'),
+                default=30.0,
+            )
         )
 
 
