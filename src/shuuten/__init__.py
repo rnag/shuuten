@@ -18,6 +18,8 @@ __all__ = [
     # logging functions
     'log', 'debug', 'info', 'warning',
     'error', 'exception', 'critical', 'fatal',
+    # models
+    'ShuutenConfig',
     # classes
     'ShuutenJSONFormatter',
     # version info
@@ -29,6 +31,7 @@ from logging import Logger, NullHandler
 from ._api import capture, get_logger, init, setup, wrap
 from ._integrations import ShuutenJSONFormatter
 from ._log import LOG
+from ._models import ShuutenConfig
 from ._runtime import detect_and_set_context, reset_runtime_context
 
 _log: Logger | None = None
