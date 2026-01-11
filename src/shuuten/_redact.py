@@ -59,12 +59,17 @@ def redact(value: Any,
             if str(k).lower() in sensitive_keys:
                 out[k] = '[REDACTED]'
             else:
-                out[k] = redact(v, sensitive_keys=sensitive_keys, max_len=max_len)
+                out[k] = redact(
+                    v,
+                    sensitive_keys=sensitive_keys,
+                    max_len=max_len,
+                )
         return out
 
     # list/tuple
     if isinstance(value, (list, tuple)):
-        return [redact(v, sensitive_keys=sensitive_keys, max_len=max_len) for v in value]
+        return [redact(v, sensitive_keys=sensitive_keys, max_len=max_len)
+                for v in value]
 
     # other scalars
     return value

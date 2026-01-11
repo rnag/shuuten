@@ -82,7 +82,8 @@ class ShuutenConfig:
         out = replace(self)
 
         # Scalars: None => no override
-        for name in ('app', 'env', 'slack_webhook_url', 'ses_from', 'ses_region'):
+        for name in ('app', 'env', 'slack_webhook_url', 'ses_from',
+                     'ses_region'):
             v = getattr(other, name)
             if v is not None:
                 setattr(out, name, v)
@@ -147,8 +148,8 @@ class Event:
     summary: str                  # "Automation failed" / "Log forwarded"
     message: str | None = None    # actual log line or str(exc)
 
-    # TODO
-    env: str | None = None        # if None, renderer can use config env ('prod')
+    # if None, renderer can use config env ('prod')
+    env: str | None = None
 
     # (optional) classification stream: `logs`, `sync`, `photos`, etc.
     workflow: str | None = None
@@ -295,16 +296,20 @@ def detect_context(
     return from_local()
 
 
-def from_lambda_context(context: Any, fn_name: str | None = None) -> RuntimeContext:
+def from_lambda_context(context: Any,
+                        fn_name: str | None = None) -> RuntimeContext:
     region = sniff_region()
 
     account_name = getenv('AWS_ACCOUNT_NAME')
     source_code = getenv('SOURCE_CODE')
 
-    fn = fn_name or getattr(context, 'function_name', None) or getenv('AWS_LAMBDA_FUNCTION_NAME')
+    fn = (fn_name or getattr(context, 'function_name', None)
+          or getenv('AWS_LAMBDA_FUNCTION_NAME'))
     req = getattr(context, 'aws_request_id', None)
-    lg = getattr(context, 'log_group_name', None) or getenv('AWS_LAMBDA_LOG_GROUP_NAME')
-    ls = getattr(context, 'log_stream_name', None) or getenv('AWS_LAMBDA_LOG_STREAM_NAME')
+    lg = (getattr(context, 'log_group_name', None)
+          or getenv('AWS_LAMBDA_LOG_GROUP_NAME'))
+    ls = (getattr(context, 'log_stream_name', None)
+          or getenv('AWS_LAMBDA_LOG_STREAM_NAME'))
     arn = getattr(context, 'invoked_function_arn', None)
     account_id = None
     if isinstance(arn, str):

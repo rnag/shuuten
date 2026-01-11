@@ -195,8 +195,10 @@ def capture(
                 return fn(*args, **kwargs)
 
             except Exception as e:
-                subject_id = subject_id_getter(args, kwargs) if subject_id_getter else None
-                context = context_getter(args, kwargs) if context_getter else {}
+                subject_id = (subject_id_getter(args, kwargs)
+                              if subject_id_getter else None)
+                context = (context_getter(args, kwargs)
+                           if context_getter else {})
                 event = Event(
                     level='error',
                     summary=summary,
