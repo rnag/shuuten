@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 DEFAULT_SENSITIVE_KEYS = frozenset({
     'token',
     'access_token',

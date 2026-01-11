@@ -3,18 +3,24 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from logging import WARNING, ERROR
+from logging import ERROR, WARNING
 from os import getenv
 from time import time
 from typing import Any, Union
 from uuid import uuid4
 
 from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
-from ._env_helpers import split_emails, parse_level, parse_quiet, parse_bool, parse_enum, parse_float
+from ._env_helpers import (
+    parse_bool,
+    parse_enum,
+    parse_float,
+    parse_level,
+    parse_quiet,
+    split_emails,
+)
 from ._log import LOG
 from ._redact import redact, redact_optional
 from ._requests import http_get_json
-
 
 UNSET = object()
 

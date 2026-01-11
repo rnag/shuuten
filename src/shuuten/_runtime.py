@@ -3,11 +3,12 @@ from __future__ import annotations
 from contextvars import ContextVar, Token
 from typing import Any
 
-from ._models import (RuntimeContext,
-                      from_lambda_context,
-                      Platform,
-                      detect_context)
-
+from ._models import (
+    Platform,
+    RuntimeContext,
+    detect_context,
+    from_lambda_context,
+)
 
 _runtime_ctx: ContextVar[RuntimeContext | None] = ContextVar(
     'shuuten_runtime_ctx',

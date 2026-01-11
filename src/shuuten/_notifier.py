@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from logging import Logger, getLogger
 from traceback import format_exception
-from typing import Iterable
+from typing import TYPE_CHECKING, Protocol
 
 from ._models import Event, ShuutenConfig, detect_context
 from ._redact import redact
 from ._runtime import get_runtime_context
+
+if TYPE_CHECKING:
+    class SupportsSend(Protocol):
+        def send(self, event: Event, *, exc_text: str | None = None) -> None:
+            ...
 
 
 class Notifier:
@@ -32,7 +38,7 @@ class Notifier:
         config: ShuutenConfig,
         *,
         logger: Logger | None = None,
-        destinations: Iterable[object] | None = None,
+        destinations: Iterable[SupportsSend] | None = None,
     ):
         self._config = config
         self._destinations = list(destinations) if destinations else []
@@ -85,8 +91,7 @@ class Notifier:
         for d in self._destinations:
             # noinspection PyBroadException
             try:
-                _send = getattr(d, 'send')
-                _send(event, exc_text=exc_text)
+                d.send(event, exc_text=exc_text)
             except Exception:
                 # never blow up automation due to notifier failure
                 self._logger.debug('Notifier destination failed', exc_info=True)

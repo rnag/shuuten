@@ -1,24 +1,18 @@
 from __future__ import annotations
 
 from functools import wraps
-from logging import (DEBUG,
-                     StreamHandler,
-                     Logger,
-                     getLogger,
-                     Handler,
-                     Formatter)
+from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 
-from ._destinations import (SlackWebhookDestination,
-                            SESDestination)
-from ._integrations import (ShuutenContextFilter,
-                            ShuutenJSONFormatter,
-                            SlackNotificationHandler)
+from ._destinations import SESDestination, SlackWebhookDestination
+from ._integrations import (
+    ShuutenContextFilter,
+    ShuutenJSONFormatter,
+    SlackNotificationHandler,
+)
 from ._log import LOG, quiet_third_party_logs
 from ._models import Event, Platform, ShuutenConfig
 from ._notifier import Notifier
-from ._runtime import (reset_runtime_context,
-                       detect_and_set_context)
-
+from ._runtime import detect_and_set_context, reset_runtime_context
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None

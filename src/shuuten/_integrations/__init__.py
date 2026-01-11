@@ -1,4 +1,6 @@
-from ._logging import (DropInternalSlackNotifyFilter,
+from ._logging import (
+                       DropInternalSlackNotifyFilter,
                        ShuutenContextFilter,
                        ShuutenJSONFormatter,
-                       SlackNotificationHandler)
+                       SlackNotificationHandler,
+)

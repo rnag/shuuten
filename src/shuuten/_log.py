@@ -1,5 +1,4 @@
-from logging import getLogger, WARNING
-
+from logging import WARNING, getLogger
 
 LOG = getLogger('shuuten')
 
