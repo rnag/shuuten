@@ -216,6 +216,10 @@ def capture(
     return deco
 
 
+# alias: for people who just want a decorator and don't care about semantics.
+wrap = capture
+
+
 class Notifier:
     """
     Shuuten notifier.

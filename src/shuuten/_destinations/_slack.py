@@ -126,11 +126,7 @@ class SlackWebhookDestination:
         self._slack_format = slack_format
 
     def send(self, event: Event, *, exc_text: str | None = None) -> None:
-        # event.exception should already be set (or set it here)
-        if exc_text and not event.exception:
-            event.exception = exc_text
-
-        safe = event.safe()
+        safe = event.safe(exception=exc_text)
 
         if self._slack_format == 'blocks':
             fallback = safe.message or safe.summary or 'Shuuten Notification'

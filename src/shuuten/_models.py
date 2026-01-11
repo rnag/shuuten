@@ -52,9 +52,11 @@ class Event:
 
     exception: str | None = None
 
-    def safe(self) -> Event:
+    def safe(self, *, exception: str | None = None) -> Event:
         # Make a shallow copy first
         e = replace(self)
+
+        exc = exception if exception is not None else self.exception
 
         # Redact string-ish fields
         e.summary = redact(self.summary) if self.summary else ''
@@ -64,7 +66,7 @@ class Event:
         e.env = _redact_optional(self.env)
         e.subject_id = _redact_optional(self.subject_id)
         e.log_url = _redact_optional(self.log_url)
-        e.exception = _redact_optional(self.exception)
+        e.exception = redact(exc) if exc else None
 
         # Redact structured fields (should be deep/recursive in your redact())
         e.context = redact(self.context) if self.context else {}
