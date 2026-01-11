@@ -22,13 +22,16 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
         top_line = f"*{event.level}* — `{event.action}`"
     else:
         # for forwarded logs: show actual message in a visible way
-        header_text = f"{event.level}: {(event.message or event.summary or 'Log')}"
+        header_text = (f"{event.level}: "
+                       f"{(event.message or event.summary or 'Log')}")
         top_line = f"`{event.action}`"
 
     blocks: list[dict] = [
         {
             'type': 'header',
-            'text': {'type': 'plain_text', 'text': header_text[:150], 'emoji': True},
+            'text': {'type': 'plain_text',
+                     'text': header_text[:150],
+                     'emoji': True},
         },
         {
             'type': 'section',
@@ -75,7 +78,8 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
         links.append(f'<{repo}|Source>')
 
     if links:
-        blocks.append({'type': 'section', 'text': {'type': 'mrkdwn', 'text': ' · '.join(links)}})
+        blocks.append({'type': 'section',
+                       'text': {'type': 'mrkdwn', 'text': ' · '.join(links)}})
 
     # Exception (only when present)
     if exc_text:
@@ -128,24 +132,27 @@ class SlackWebhookDestination:
             fallback = safe.message or safe.summary or 'Shuuten Notification'
             # Slack block kit (default)
             payload = {
-                'text': f'{safe.level}: {fallback} ({safe.env})',  # fallback for notifications/search
+                # fallback for notifications/search
+                'text': f'{safe.level}: {fallback} ({safe.env})',
                 'blocks': slack_blocks_for_event(safe)
             }
         else:
             # Simple text payload
             text = (
-                f"🚨 *{safe.summary}*\n"
-                f"*env*: {safe.env} | *workflow*: {safe.workflow} | *action*: {safe.action}\n"
-                f"*run_id*: {safe.run_id}\n"
+                f'🚨 *{safe.summary}*\n'
+                f'*env*: {safe.env} '
+                f'| *workflow*: {safe.workflow} '
+                f'| *action*: {safe.action}\n'
+                f'*run_id*: {safe.run_id}\n'
             )
             if safe.subject_id:
-                text += f"*subject*: {safe.subject_id}\n"
+                text += f'*subject*: {safe.subject_id}\n'
             if safe.log_url:
-                text += f"*logs*: {safe.log_url}\n"
+                text += f'*logs*: {safe.log_url}\n'
             if safe.exception:
-                text += f"```{safe.exception}```"
+                text += f'```{safe.exception}```'
             if safe.message:
-                text += f"*msg*: ```{safe.message}```"
+                text += f'*msg*: ```{safe.message}```'
 
             payload = {'text': text}
 
