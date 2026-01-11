@@ -1,5 +1,8 @@
+__all__ = ['ShuutenContextFilter',
+           'ShuutenJSONFormatter',
+           'SlackNotificationHandler']
+
 from ._logging import (
-                       DropInternalSlackNotifyFilter,
                        ShuutenContextFilter,
                        ShuutenJSONFormatter,
                        SlackNotificationHandler,

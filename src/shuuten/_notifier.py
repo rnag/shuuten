@@ -42,7 +42,8 @@ class Notifier:
     ):
         self._config = config
         self._destinations = list(destinations) if destinations else []
-        self._logger = logger = logger or getLogger(f'{self._config.app}.shuuten')
+        self._logger = logger = (logger
+                                 or getLogger(f'{self._config.app}.shuuten'))
         logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
@@ -58,7 +59,8 @@ class Notifier:
 
         exc_text = None
         if exc is not None:
-            exc_text = ''.join(format_exception(type(exc), exc, exc.__traceback__))
+            exc_text = ''.join(
+                format_exception(type(exc), exc, exc.__traceback__))
             exc_text = redact(exc_text)
 
         # 1. local log (CloudWatch)

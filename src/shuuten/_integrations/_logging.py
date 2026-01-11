@@ -29,7 +29,8 @@ class ShuutenContextFilter(logging.Filter):
 
 class SlackNotificationHandler(Handler):
     """
-    Forwards ERROR+ log records to the global Shuuten notifier (or a passed-in notifier).
+    Forwards ERROR+ log records to the global Shuuten notifier (or
+    a passed-in notifier).
 
     Intended for "oops" paths; keep level high (ERROR/CRITICAL) to avoid spam.
 
