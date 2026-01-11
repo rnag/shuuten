@@ -31,7 +31,8 @@ def _text_body(event: Event) -> str:
     # plaintext fallback (always include)
     lines = [
         f'{event.summary}',
-        f'level={event.level} env={event.env} workflow={event.workflow} action={event.action}',
+        f'level={event.level} env={event.env} '
+        f'workflow={event.workflow} action={event.action}',
         f'run_id={event.run_id}',
     ]
     if event.log_url:
@@ -136,7 +137,8 @@ def _html_body(event: Event) -> str:
               {meta_rows}
             </table>
 
-            {('<h3 style="margin:16px 0 8px 0;">Links</h3>' + links) if links else ''}
+            {('<h3 style="margin:16px 0 8px 0;">Links</h3>'
+              + links) if links else ''}
 
             <h3 style="margin:16px 0 8px 0;">Source</h3>
             {table_from_dict(event.source)}
@@ -160,7 +162,8 @@ class SESDestination:
     region_name: str | None = None  # optional override
 
     def _client(self):
-        # region: prefer runtime region if you want; otherwise env / boto default chain
+        # region: prefer runtime region if you want; otherwise
+        # env / boto default chain
         if self.region_name:
             return boto3.client('ses', region_name=self.region_name)
         return boto3.client('ses')
