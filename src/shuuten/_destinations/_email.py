@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import boto3
 
 from .._models import Event
-from .._redact import redact
 
 
 def _level_color(level: str) -> str:
@@ -26,17 +25,17 @@ def split_emails(value: str | None) -> list[str]:
 
 
 def _subject_for_event(event: Event) -> str:
-    lvl = event.level.upper()
+    lvl = event.level
     env = event.env
     wf = event.workflow
     action = event.action
     return f'{lvl} {env} {wf}: {action}'
 
 
-def _text_body(event: Event, exc_text: str | None) -> str:
+def _text_body(event: Event) -> str:
     # plaintext fallback (always include)
     lines = [
-        f'{event.title}',
+        f'{event.summary}',
         f'level={event.level} env={event.env} workflow={event.workflow} action={event.action}',
         f'run_id={event.run_id}',
     ]
@@ -53,30 +52,17 @@ def _text_body(event: Event, exc_text: str | None) -> str:
         for k, v in event.context.items():
             lines.append(f'  {k}: {v}')
 
-    if exc_text:
+    if event.exception:
         lines.append('')
         lines.append('exception:')
-        lines.append(exc_text)
+        lines.append(event.exception)
 
     return '\n'.join(lines)
 
 
-def _html_body(event: Event, exc_text: str | None) -> str:
+def _html_body(event: Event) -> str:
     # Keep it simple (no external fonts/css needed)
     # Email clients are picky; inline-ish styling is safer.
-    safe = redact({
-        'title': event.title,
-        'level': event.level.upper(),
-        'env': event.env,
-        'workflow': event.workflow,
-        'action': event.action,
-        'run_id': event.run_id,
-        'timestamp': event.timestamp,
-        'log_url': event.log_url,
-        'source': event.source or {},
-        'context': event.context or {},
-        'exception': exc_text,
-    })
 
     def row(k: str, v: str) -> str:
         return f"""
@@ -87,18 +73,18 @@ def _html_body(event: Event, exc_text: str | None) -> str:
         """
 
     meta_rows = ''.join([
-        row('Level', safe['level']),
-        row('Env', safe['env']),
-        row('Workflow', safe['workflow']),
-        row('Action', safe['action']),
-        row('Run ID', safe['run_id']),
-        row('Timestamp', str(safe['timestamp'])),
+        row('Level', event.level),
+        row('Env', event.env),
+        row('Workflow', event.workflow),
+        row('Action', event.action),
+        row('Run ID', event.run_id),
+        row('Timestamp', str(event.timestamp)),
     ])
 
     links = ''
-    if safe.get('log_url'):
-        links += f'<div style="margin:6px 0;"><a href="{safe["log_url"]}">CloudWatch Logs</a></div>'
-    src = safe.get('source') or {}
+    if event.log_url:
+        links += f'<div style="margin:6px 0;"><a href="{event.log_url}">CloudWatch Logs</a></div>'
+    src = event.source
     if isinstance(src, dict) and src.get('function_url'):
         links += f'<div style="margin:6px 0;"><a href="{src["function_url"]}">Lambda</a></div>'
     if isinstance(src, dict) and src.get('source_code'):
@@ -109,11 +95,12 @@ def _html_body(event: Event, exc_text: str | None) -> str:
         if not d:
             return '<i>none</i>'
         rows = ''.join(row(str(k), str(v)) for k, v in d.items())
-        return f'<table style="border-collapse:collapse;width:100%;background:#fff;border:1px solid #eee;">{rows}</table>'
+        return ('<table style="border-collapse:collapse;width:100%;'
+                f'background:#fff;border:1px solid #eee;">{rows}</table>')
 
     exc_block = ''
-    if safe.get('exception'):
-        exc = safe['exception']
+    if event.exception:
+        exc = event.exception
         if len(exc) > 12000:
             exc = exc[-12000:]
         exc_block = f"""
@@ -128,8 +115,8 @@ def _html_body(event: Event, exc_text: str | None) -> str:
       <body style="font-family:Arial, sans-serif;background:#f6f7f9;padding:16px;">
         <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e6e6e6;border-radius:10px;overflow:hidden;">
           <div style="background:{color};color:#fff;padding:12px 16px;">
-            <div style="font-size:16px;font-weight:700;">{safe["title"]}</div>
-            <div style="font-size:12px;opacity:0.9;">{safe["level"]} · {safe["env"]} · {safe["workflow"]} · {safe["action"]}</div>
+            <div style="font-size:16px;font-weight:700;">{event.summary}</div>
+            <div style="font-size:12px;opacity:0.9;">{event.level} · {event.env} · {event.workflow} · {event.action}</div>
           </div>
 
           <div style="padding:16px;">
@@ -141,10 +128,10 @@ def _html_body(event: Event, exc_text: str | None) -> str:
             {('<h3 style="margin:16px 0 8px 0;">Links</h3>' + links) if links else ''}
 
             <h3 style="margin:16px 0 8px 0;">Source</h3>
-            {table_from_dict(safe.get("source") or {})}
+            {table_from_dict(event.source)}
 
             <h3 style="margin:16px 0 8px 0;">Context</h3>
-            {table_from_dict(safe.get("context") or {})}
+            {table_from_dict(event.context)}
 
             {exc_block}
           </div>
@@ -171,9 +158,15 @@ class SESDestination:
         if not self.to_addresses:
             return
 
-        subject = _subject_for_event(event)
-        text = _text_body(event, exc_text)
-        html = _html_body(event, exc_text)
+        # event.exception should already be set (or set it here)
+        if exc_text and not event.exception:
+            event.exception = exc_text
+
+        safe = event.safe()
+
+        subject = _subject_for_event(safe)
+        text = _text_body(safe)
+        html = _html_body(safe)
 
         client_kwargs = {
             'Source': self.from_address,

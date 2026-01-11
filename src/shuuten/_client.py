@@ -25,11 +25,12 @@ from ._integrations import (ShuutenContextFilter,
                             ShuutenJSONFormatter,
                             SlackNotificationHandler)
 from ._log import LOG, quiet_third_party_logs
-from ._models import Event, detect_context
+from ._models import Event, Platform, detect_context
 from ._redact import redact
 from ._runtime import (get_runtime_context,
-                       set_lambda_context,
-                       reset_runtime_context)
+                       reset_runtime_context,
+                       detect_and_set_context)
+
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None
@@ -158,26 +159,30 @@ def get_logger(name: str | None = None,
     return log
 
 
-def catch(
-    workflow: str,
+def capture(
+    workflow: str | None = None,
     env: str | None = None,
-    title: str = 'Automation failed',
+    platform: Platform = Platform.AUTO,
+    summary: str = 'Automation failed',
     action: str | None = None,
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
     context_getter=None,  # fn(args, kwargs) -> dict
     re_raise: bool = True,
 ):
     """
-    Decorator for AWS Lambda Function/s.
-    """
+    Decorator for AWS Lambda Function or ECS Task or Local.
 
+    Captures exceptions, enriches them with runtime context, and
+    notifies configured destinations. Exceptions are re-raised
+    by default.
+    """
     def deco(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
 
-            token = set_lambda_context(ctx_obj)
+            token = detect_and_set_context(ctx_obj, platform)
 
             try:
                 return fn(*args, **kwargs)
@@ -187,7 +192,7 @@ def catch(
                 context = context_getter(args, kwargs) if context_getter else {}
                 event = Event(
                     level='error',
-                    title=title,
+                    summary=summary,
                     workflow=workflow,
                     action=action or fn.__qualname__,
                     env=env,
@@ -262,7 +267,7 @@ class Notifier:
             payload = redact({
                 'app': self._app_name,
                 'level': event.level,
-                'title': event.title,
+                'summary': event.summary,
                 'workflow': event.workflow,
                 'action': event.action,
                 'env': event.env,

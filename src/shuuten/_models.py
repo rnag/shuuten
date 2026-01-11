@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from enum import Enum
 from os import getenv
 from time import time
 from typing import Any
@@ -8,28 +9,71 @@ from uuid import uuid4
 
 from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
 from ._log import LOG
+from ._redact import redact
 from ._requests import http_get_json
+
+
+def _redact_optional(s: str | None) -> str | None:
+    return redact(s) if s else None
+
+
+class Platform(str, Enum):
+    AUTO = 'auto'
+    LAMBDA = 'lambda'
+    ECS = 'ecs'
 
 
 @dataclass(slots=True)
 class Event:
-    level: str              # 'ERROR' | 'WARNING' | 'INFO'
-    title: str              # short human summary
-    workflow: str           # 'slack-photo-sync'
-    action: str             # 'upload_photo'
-    env: str                # 'prod'
+    level: str                    # 'ERROR' | 'WARNING' | 'INFO'
+    summary: str                  # "Automation failed" / "Log forwarded"
+    message: str | None = None    # actual log line or str(exc)
+
+    # TODO
+    env: str | None = None        # if None, renderer can use config env ('prod')
+
+    # (optional) classification stream: `logs`, `sync`, `photos`, etc.
+    workflow: str | None = None
+    # fn qualname or logger name (optional)
+    action: str | None = None
+
     run_id: str = field(default_factory=lambda: str(uuid4()))
     timestamp: float = field(default_factory=time)
 
     # 'safe' identifiers (prefer IDs, not emails)
     subject_id: str | None = None
-
     # free-form structured context
     context: dict[str, Any] = field(default_factory=dict)
 
     # links / metadata
     source: dict[str, Any] = field(default_factory=dict)
-    log_url: str | None = None      # deep link to CW (optional)
+    # (optional) deep link to CW
+    log_url: str | None = None
+
+    exception: str | None = None
+
+    def safe(self) -> Event:
+        # Make a shallow copy first
+        e = replace(self)
+
+        # Redact string-ish fields
+        e.summary = redact(self.summary) if self.summary else ''
+        e.message = _redact_optional(self.message)
+        e.workflow = _redact_optional(self.workflow)
+        e.action = _redact_optional(self.action)
+        e.env = _redact_optional(self.env)
+        e.subject_id = _redact_optional(self.subject_id)
+        e.log_url = _redact_optional(self.log_url)
+        e.exception = _redact_optional(self.exception)
+
+        # Redact structured fields (should be deep/recursive in your redact())
+        e.context = redact(self.context) if self.context else {}
+        e.source = redact(self.source) if self.source else {}
+
+        # uppercase level
+        e.level = e.level.upper()
+
+        return e
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,7 +151,10 @@ def sniff_region() -> str | None:
     return getenv('AWS_REGION') or getenv('AWS_DEFAULT_REGION')
 
 
-def detect_context() -> RuntimeContext:
+def detect_context(
+        context=None,
+        platform: Platform = Platform.AUTO,
+) -> RuntimeContext:
     """
     if no context is explicitly set:
         detect Lambda by AWS_LAMBDA_FUNCTION_NAME
@@ -117,10 +164,10 @@ def detect_context() -> RuntimeContext:
     lambda_fn_name = getenv('AWS_LAMBDA_FUNCTION_NAME')
     ecs_metadata = getenv('ECS_CONTAINER_METADATA_URI_V4')
 
-    if lambda_fn_name:
-        return from_lambda_context(None, lambda_fn_name)
+    if lambda_fn_name or platform is Platform.LAMBDA:
+        return from_lambda_context(context, lambda_fn_name)
 
-    if ecs_metadata:
+    if ecs_metadata or platform is Platform.ECS:
         ctx = from_ecs(ecs_metadata)
         return ctx or from_local()
 

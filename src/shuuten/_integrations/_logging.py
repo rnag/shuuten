@@ -8,7 +8,6 @@ from time import time
 
 from .._log import LOG
 from .._models import Event
-from .._redact import redact
 from .._runtime import get_runtime_context
 
 
@@ -47,7 +46,7 @@ class SlackNotificationHandler(Handler):
         workflow: str,
         env: str | None = None,
         min_level: str | int = ERROR,
-        title: str = 'Automation error',
+        summary: str = 'Automation error',
         include_stack: bool = True,
         context_getter=None,  # fn(record) -> dict
         dedupe_window_s: float = 30.0,
@@ -60,7 +59,7 @@ class SlackNotificationHandler(Handler):
         self._notifier = notifier
         self._workflow = workflow
         self._env = env
-        self._title = title
+        self._summary = summary
         self._include_stack = include_stack
         self._context_getter = context_getter
         self._dedupe_window_s = dedupe_window_s
@@ -103,7 +102,6 @@ class SlackNotificationHandler(Handler):
                 'file': record.filename,
                 'lineno': record.lineno,
                 'func': record.funcName,
-                'msg': msg,
             })
 
             level = record.levelname.lower()
@@ -111,23 +109,24 @@ class SlackNotificationHandler(Handler):
 
             if record.exc_info:
                 exc = record.exc_info[1]
-                title = self._title
+                summary = self._summary
             else:
                 exc = None
-                title = 'Log forwarded'
+                summary = 'Log forwarded'
 
             event = Event(
                 level=level,
-                title=title,
+                summary=summary,
+                message=msg,
                 workflow=self._workflow,
                 action=action,
                 env=self._env,
-                context=redact(context),
+                context=context,
             )
 
             if exc is None and self._include_stack and record.stack_info:
                 # treat stack_info as part of context
-                event.context['stack'] = redact(record.stack_info)
+                event.context['stack'] = record.stack_info
 
             self._notifier.notify(event, exc=exc)
 

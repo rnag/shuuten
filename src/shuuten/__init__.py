@@ -9,7 +9,7 @@ __all__ = [
     'init',
     'get_logger',
     # decorator
-    'catch',
+    'capture',
     # optional (if catch is not used)
     'set_lambda_context',
     'set_runtime_context',
@@ -27,7 +27,7 @@ __all__ = [
 from logging import Logger, NullHandler
 from os import getenv
 
-from ._client import Notifier, setup, catch, init, get_logger
+from ._client import Notifier, setup, capture, init, get_logger
 from ._constants import ENV_ENV_VAR
 from ._log import LOG
 from ._models import from_lambda_context
