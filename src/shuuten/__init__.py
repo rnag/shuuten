@@ -17,18 +17,21 @@ __all__ = [
     'reset_runtime_context',
     # TODO remove
     'send_to_slack',
-    # Classes
-    'Notifier',
-    'SlackWebhookDestination',
-    'ShuutenJSONFormatter',
+    # Logging functions
     'log', 'debug', 'info', 'warning', 'debug',
     'exception', 'critical', 'fatal',
+    # Classes
+    # 'Notifier',
+    # 'SESDestination',
+    # 'SlackWebhookDestination',
+    'ShuutenJSONFormatter',
 ]
 
 from logging import Logger, NullHandler
 
-from ._client import Notifier, setup, capture, init, get_logger, wrap
-from ._destinations import SlackWebhookDestination
+from ._api import setup, init, capture, wrap, get_logger
+from ._notifier import Notifier
+# from ._destinations import SESDestination, SlackWebhookDestination
 from ._integrations import ShuutenJSONFormatter
 from ._log import LOG
 from ._models import from_lambda_context, ShuutenConfig
