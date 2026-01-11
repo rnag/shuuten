@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from typing import Any
 
@@ -29,6 +31,10 @@ DEFAULT_SENSITIVE_KEYS = frozenset({
 })
 
 BEARER_RE = re.compile(r'(?i)\bBearer\s+[A-Za-z0-9\-_.=]+\b')
+
+
+def redact_optional(s: str | None) -> str | None:
+    return redact(s) if s else None
 
 
 def redact(value: Any,

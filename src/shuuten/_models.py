@@ -1,25 +1,29 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields, replace, MISSING
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from logging import WARNING, ERROR
 from os import getenv
 from time import time
-from typing import Any, cast, Literal
+from typing import Any, Union
 from uuid import uuid4
 
 from ._aws_links import cloudwatch_log_stream_link, lambda_console_link
-from ._env_helpers import split_emails
+from ._env_helpers import split_emails, parse_level, parse_quiet, parse_bool, parse_enum
 from ._log import LOG
-from ._redact import redact
+from ._redact import redact, redact_optional
 from ._requests import http_get_json
 
 
-def _redact_optional(s: str | None) -> str | None:
-    return redact(s) if s else None
+UNSET = object()
+
+# TODO Update to new-style union once we drop support for PY 3.9
+QuietLevel = Union[int, None, object]
 
 
-SLACK_FORMAT_TYPE = Literal['blocks', 'plain']
+class SlackFormat(str, Enum):
+    BLOCKS = 'blocks'
+    PLAIN = 'plain'
 
 
 class Platform(str, Enum):
@@ -34,10 +38,12 @@ class ShuutenConfig:
     env: str | None = None
 
     emit_local_log: bool = True
-    quiet_level: int | None = WARNING
+    # Quiet level for 3rd party libraries (such as botocore);
+    # defaults to `WARNING` if not set.
+    quiet_level: QuietLevel = UNSET
     # Slack webhook
     slack_webhook_url: str | None = None
-    slack_format: SLACK_FORMAT_TYPE = 'blocks'
+    slack_format: SlackFormat = SlackFormat.BLOCKS
 
     # Minimum log level for messages sent to Slack
     min_level: int = ERROR
@@ -68,21 +74,22 @@ class ShuutenConfig:
         out = replace(self)
 
         # Scalars: None => no override
-        # Strings with defaults: override if not None (even if "")
-        # Int policy: always override (min_level is not Optional)
-        for name in ('app', 'env', 'slack_webhook_url', 'ses_from',
-                     'ses_region', 'slack_format', 'min_level'):
+        for name in ('app', 'env', 'slack_webhook_url', 'ses_from', 'ses_region'):
             v = getattr(other, name)
             if v is not None:
                 setattr(out, name, v)
 
+        # Strings with defaults: always override
+        out.slack_format = other.slack_format
+        # Int policy: always override (min_level is not optional)
+        out.min_level = other.min_level
+        # Bool: override
+        out.emit_local_log = other.emit_local_log
+
         # quiet_level: None is meaningful (explicit disable)
         # so we must always take it when user passes it.
-        #
-        # Problem: can't tell if they passed it explicitly.
-        # Solution: require user to pass quiet_level explicitly when calling init,
-        # or move to UNSET sentinel for full correctness.
-        out.quiet_level = other.quiet_level
+        if other.quiet_level is not UNSET:
+            out.quiet_level = other.quiet_level
 
         # Lists: treat empty as "no override"
         if other.ses_to:
@@ -90,30 +97,31 @@ class ShuutenConfig:
         if other.ses_reply_to:
             out.ses_reply_to = list(other.ses_reply_to)
 
-        # Bool: override
-        out.emit_local_log = other.emit_local_log
-
         return out
 
     @classmethod
     def from_env(cls) -> ShuutenConfig:
-        # TODO maybe Enum
-        slack_format = cast(SLACK_FORMAT_TYPE, getenv('SHUUTEN_SLACK_FORMAT', 'blocks'))
-        min_lvl_from_env = getenv('SHUUTEN_MIN_LEVEL')
-        emit_local_log_from_env = getenv('SHUUTEN_EMIT_LOCAL_LOG')
-        emit_local_log = True if (
-            emit_local_log_from_env is None
-            or emit_local_log_from_env.upper() in ('1', 'TRUE', 'YES')
-        ) else False
-
         return cls(
             app=getenv('SHUUTEN_APP'),
             env=getenv('SHUUTEN_ENV'),
-            emit_local_log=emit_local_log,
-            quiet_level=getenv('SHUUTEN_QUIET_LEVEL', WARNING),
-            min_level=int(min_lvl_from_env) if min_lvl_from_env else ERROR,
+            emit_local_log=parse_bool(
+                getenv('SHUUTEN_EMIT_LOCAL_LOG'),
+                default=True,
+            ),
+            quiet_level=parse_quiet(
+                getenv('SHUUTEN_QUIET_LEVEL'),
+                default_level=WARNING,
+            ),
+            min_level=parse_level(
+                getenv('SHUUTEN_MIN_LEVEL'),
+                default=ERROR,
+            ),
             slack_webhook_url=getenv('SHUUTEN_SLACK_WEBHOOK_URL'),
-            slack_format=slack_format,
+            slack_format=parse_enum(
+                getenv('SHUUTEN_SLACK_FORMAT'),
+                enum=SlackFormat,
+                default=SlackFormat.BLOCKS,
+            ),
             ses_from=getenv('SHUUTEN_SES_FROM'),
             ses_to=split_emails(getenv('SHUUTEN_SES_TO')),
             ses_reply_to=split_emails(getenv('SHUUTEN_SES_REPLY_TO')),
@@ -158,12 +166,12 @@ class Event:
 
         # Redact string-ish fields
         e.summary = redact(self.summary) if self.summary else ''
-        e.message = _redact_optional(self.message)
-        e.workflow = _redact_optional(self.workflow)
-        e.action = _redact_optional(self.action)
-        e.env = _redact_optional(self.env)
-        e.subject_id = _redact_optional(self.subject_id)
-        e.log_url = _redact_optional(self.log_url)
+        e.message = redact_optional(self.message)
+        e.workflow = redact_optional(self.workflow)
+        e.action = redact_optional(self.action)
+        e.env = redact_optional(self.env)
+        e.subject_id = redact_optional(self.subject_id)
+        e.log_url = redact_optional(self.log_url)
         e.exception = redact(exc) if exc else None
 
         # Redact structured fields (should be deep/recursive in your redact())

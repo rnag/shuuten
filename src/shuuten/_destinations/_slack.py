@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from .._models import Event, SLACK_FORMAT_TYPE
+from .._models import Event, SlackFormat
 from .._requests import send_to_slack
 
 
@@ -113,7 +113,7 @@ class SlackWebhookDestination:
     def __init__(
             self,
             webhook_url: str,
-            slack_format: SLACK_FORMAT_TYPE = 'blocks',
+            slack_format: SlackFormat = SlackFormat.BLOCKS,
             *,
             username: str | None = None):
 
@@ -124,7 +124,7 @@ class SlackWebhookDestination:
     def send(self, event: Event, *, exc_text: str | None = None) -> None:
         safe = event.safe(exception=exc_text)
 
-        if self._slack_format == 'blocks':
+        if self._slack_format is SlackFormat.BLOCKS:
             fallback = safe.message or safe.summary or 'Shuuten Notification'
             # Slack block kit (default)
             payload = {
