@@ -51,6 +51,12 @@ class Notifier:
         if event.env is None:
             event.env = self._config.env
 
+        # surface app name in notifications
+        if self._config.app:
+            if event.context is None:
+                event.context = {}
+            event.context.setdefault('app', self._config.app)
+
         # enrich source/log_url from runtime context
         # if no context is explicitly set: detect AWS Lambda, ECS, or Local
         rt = get_runtime_context() or detect_context()

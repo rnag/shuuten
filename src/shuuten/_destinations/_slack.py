@@ -49,6 +49,7 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
 
     # Key fields (keep compact)
     f: list[dict] = []
+    add_field(f, 'App', ctx.get('app'))
     add_field(f, 'Env', event.env)
     add_field(f, 'Workflow', event.workflow)
     add_field(f, 'Run ID', event.run_id)
@@ -137,14 +138,18 @@ class SlackWebhookDestination:
                 'blocks': slack_blocks_for_event(safe)
             }
         else:
+            ctx = safe.context or {}
+            app = ctx.get('app')
             # Simple text payload
             text = (
                 f'🚨 *{safe.summary}*\n'
-                f'*env*: {safe.env} '
-                f'| *workflow*: {safe.workflow} '
-                f'| *action*: {safe.action}\n'
-                f'*run_id*: {safe.run_id}\n'
+                + (f'*app*: {app} | ' if app else '')
+                + f'*env*: {safe.env} | '
+                  f'*workflow*: {safe.workflow} | '
+                  f'*action*: {safe.action}\n'
+                  f'*run_id*: {safe.run_id}\n'
             )
+
             if safe.subject_id:
                 text += f'*subject*: {safe.subject_id}\n'
             if safe.log_url:

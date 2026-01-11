@@ -24,14 +24,19 @@ def _subject_for_event(event: Event) -> str:
     env = event.env or '-'
     wf = event.workflow or '-'
     action = event.action or '-'
-    return f'{lvl} {env} {wf}: {action}'
+
+    app = (event.context or {}).get('app')
+    app_part = f'[{app}] ' if app else ''
+
+    return f'{lvl} {app_part}{env} {wf}: {action}'
 
 
 def _text_body(event: Event) -> str:
     # plaintext fallback (always include)
+    app = (event.context or {}).get('app')
     lines = [
         f'{event.summary}',
-        f'level={event.level} env={event.env} '
+        f'level={event.level} app={app} env={event.env} ',
         f'workflow={event.workflow} action={event.action}',
         f'run_id={event.run_id}',
     ]
@@ -59,7 +64,8 @@ def _text_body(event: Event) -> str:
 def _html_body(event: Event) -> str:
     # Keep it simple (no external fonts/css needed)
     # Email clients are picky; inline-ish styling is safer.
-
+    ctx_app = (event.context or {}).get('app')
+    esc_app = h(ctx_app) if ctx_app else ''
     esc_env = h(event.env or '')
     esc_action = h(event.action or '')
     esc_workflow = h(event.workflow or '')
@@ -72,14 +78,18 @@ def _html_body(event: Event) -> str:
         </tr>
         """
 
-    meta_rows = ''.join([
+    rows = [
         row('Level', event.level),
         row('Env', esc_env),
         row('Workflow', esc_workflow),
         row('Action', esc_action),
         row('Run ID', h(event.run_id)),
         row('Timestamp', str(event.timestamp)),
-    ])
+    ]
+    if esc_app:
+        rows.append(row('App', esc_app))
+
+    meta_rows = ''.join(rows)
 
     links = ''
     if event.log_url:

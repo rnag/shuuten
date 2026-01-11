@@ -25,8 +25,8 @@
 - [Readme]("../README.md")
 - [Installation](installation.md)
 - [Usage](usage.md)
-- [Contributing]("../CONTRIBUTING.md")
-- [History]("../HISTORY.md")
+- [Contributing](contributing.md)
+- [History](history.md)
 
 ## Indices and tables
 
