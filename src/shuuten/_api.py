@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
+from typing import cast
 
 from ._destinations import SESDestination, SlackWebhookDestination
 from ._integrations import (
@@ -25,6 +26,7 @@ def _get_notifier() -> Notifier:
         init()
         if _NOTIFIER is None:
             raise RuntimeError('shuuten.init() did not initialize the notifier')
+        return _NOTIFIER
 
     return _NOTIFIER
 
@@ -85,7 +87,7 @@ def init(config: ShuutenConfig | None = None,
               else config.with_env_defaults())
 
     if config.quiet_level is not None:
-        quiet_third_party_logs(config.quiet_level)
+        quiet_third_party_logs(cast(int, config.quiet_level))
 
     ses_from = config.ses_from
     ses_to = config.ses_to
@@ -97,15 +99,15 @@ def init(config: ShuutenConfig | None = None,
     _HANDLERS = [handler]
 
     destinations = []
-    enable_slack_log_handler = True if config.slack_webhook_url else False
+    slack_url = config.slack_webhook_url
 
     # DESTINATIONS
     # Slack
-    if enable_slack_log_handler:
+    if slack_url is not None:
         LOG.debug('Slack: Found webhook %s',
-                  config.slack_webhook_url)
+                  slack_url)
         slack_destination = SlackWebhookDestination(
-            webhook_url=config.slack_webhook_url,
+            webhook_url=slack_url,
             slack_format=config.slack_format,
         )
         destinations.append(slack_destination)
@@ -126,7 +128,7 @@ def init(config: ShuutenConfig | None = None,
         destinations=destinations,
     )
 
-    if enable_slack_log_handler:
+    if slack_url is not None:
         slack_handler = SlackNotificationHandler(
             _NOTIFIER,
             min_level=config.min_level,

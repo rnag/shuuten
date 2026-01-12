@@ -38,7 +38,7 @@ def redact_optional(s: str | None) -> str | None:
 
 def redact(value: Any,
            *,
-           sensitive_keys: object = DEFAULT_SENSITIVE_KEYS,
+           sensitive_keys: frozenset[str] = DEFAULT_SENSITIVE_KEYS,
            max_len: int = 4000) -> Any:
 
     # skip "falsy" values

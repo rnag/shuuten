@@ -74,7 +74,7 @@ def _html_body(event: Event) -> str:
           <td style='padding:6px 10px;color:#555;font-size:12px;vertical-align:top;white-space:nowrap;'><b>{k}</b></td>
           <td style='padding:6px 10px;color:#111;font-size:12px;vertical-align:top;'>{v}</td>
         </tr>
-        """
+        """  # noqa: E501
 
     rows = [
         row('Level', event.level),
@@ -91,12 +91,12 @@ def _html_body(event: Event) -> str:
 
     links = ''
     if event.log_url:
-        links += f'<div style="margin:6px 0;"><a href="{h(event.log_url)}">CloudWatch Logs</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(event.log_url)}">CloudWatch Logs</a></div>'  # noqa: E501
     src = event.source
     if isinstance(src, dict) and src.get('function_url'):
-        links += f'<div style="margin:6px 0;"><a href="{h(src["function_url"])}">Lambda</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(src["function_url"])}">Lambda</a></div>'  # noqa: E501
     if isinstance(src, dict) and src.get('source_code'):
-        links += f'<div style="margin:6px 0;"><a href="{h(src["source_code"])}">Source</a></div>'
+        links += f'<div style="margin:6px 0;"><a href="{h(src["source_code"])}">Source</a></div>'  # noqa: E501
 
     # Render source/context tables compactly
     def table_from_dict(d: dict) -> str:
@@ -114,7 +114,7 @@ def _html_body(event: Event) -> str:
         exc_block = f"""
         <h3 style='margin:16px 0 8px 0;'>Exception</h3>
         <pre style='white-space:pre-wrap;background:#0b0b0b;color:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;overflow:auto;'>{h(exc)}</pre>
-        """
+        """  # noqa: E501
 
     color = _level_color(event.level)
 
@@ -159,7 +159,7 @@ def _html_body(event: Event) -> str:
         </div>
       </body>
     </html>
-    """
+    """  # noqa: E501
 
 
 @dataclass(slots=True, frozen=True)
