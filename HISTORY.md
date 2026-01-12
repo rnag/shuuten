@@ -6,6 +6,7 @@
 - New high-level public API: `setup()`, `init()`, `get_logger()`, `capture()` / `wrap()` and runtime context helpers.
 - Slack destination via Incoming Webhooks, including formatting options (`blocks` vs `plain`) and basic deduping (`SHUUTEN_DEDUPE_WINDOW_S`).
 - Email destination via AWS SES (HTML email), configurable via `SHUUTEN_SES_*`.
+- Support for AWS ECS Tasks.
 - Docs site powered by MkDocs Material, with docs pages for README / contributing / history via include-markdown.
 
 ### Changed
