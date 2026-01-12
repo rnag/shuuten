@@ -5,7 +5,7 @@ from logging import Logger, getLogger
 from traceback import format_exception
 from typing import TYPE_CHECKING, Protocol
 
-from ._models import Event, ShuutenConfig, detect_context
+from ._models import Event, Config, detect_context
 from ._redact import redact
 from ._runtime import get_runtime_context
 
@@ -35,7 +35,7 @@ class Notifier:
 
     def __init__(
         self,
-        config: ShuutenConfig,
+        config: Config,
         *,
         logger: Logger | None = None,
         destinations: Iterable[SupportsSend] | None = None,

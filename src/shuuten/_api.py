@@ -11,7 +11,7 @@ from ._integrations import (
     SlackNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
-from ._models import Event, Platform, ShuutenConfig
+from ._models import Event, Platform, Config
 from ._notifier import Notifier
 from ._runtime import detect_and_set_context, reset_runtime_context
 
@@ -58,7 +58,7 @@ def notify_event(event: Event, *, exc: BaseException | None = None) -> None:
     _get_notifier().notify(event, exc=exc)
 
 
-def setup(config: ShuutenConfig | None = None,
+def setup(config: Config | None = None,
           *,
           formatter: type[Formatter] = ShuutenJSONFormatter,
           reset: bool = False,
@@ -69,7 +69,7 @@ def setup(config: ShuutenConfig | None = None,
     return get_logger(logger_name, configure_root)
 
 
-def init(config: ShuutenConfig | None = None,
+def init(config: Config | None = None,
          *,
          formatter: type[Formatter] = ShuutenJSONFormatter,
          reset: bool = False):
@@ -82,7 +82,7 @@ def init(config: ShuutenConfig | None = None,
     if _HANDLERS is not None and not reset:
         return
 
-    config = (ShuutenConfig.from_env()
+    config = (Config.from_env()
               if config is None
               else config.with_env_defaults())
 
@@ -165,7 +165,7 @@ def get_logger(name: str | None = None,
 def capture(
     _fn=None,
     *,
-    config: ShuutenConfig | None = None,
+    config: Config | None = None,
     workflow: str | None = None,
     platform: Platform = Platform.AUTO,
     summary: str = 'Automation failed',

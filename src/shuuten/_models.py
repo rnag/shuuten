@@ -40,7 +40,7 @@ class Platform(str, Enum):
 
 
 @dataclass(slots=True)
-class ShuutenConfig:
+class Config:
     app: str | None = None
     env: str | None = None
 
@@ -66,11 +66,11 @@ class ShuutenConfig:
     ses_region: str | None = None
     dedupe_window_s: float = 30.0
 
-    def with_env_defaults(self) -> ShuutenConfig:
-        cfg = ShuutenConfig.from_env()
+    def with_env_defaults(self) -> Config:
+        cfg = Config.from_env()
         return cfg.overlay(self)
 
-    def overlay(self, other: ShuutenConfig) -> ShuutenConfig:
+    def overlay(self, other: Config) -> Config:
         """
         Return a new config where `other` overrides `self`.
         Semantics:
@@ -109,7 +109,7 @@ class ShuutenConfig:
         return out
 
     @classmethod
-    def from_env(cls) -> ShuutenConfig:
+    def from_env(cls) -> Config:
         return cls(
             app=getenv('SHUUTEN_APP'),
             env=getenv('SHUUTEN_ENV'),

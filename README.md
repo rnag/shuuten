@@ -69,8 +69,9 @@ def handler(event, context):
 ```python
 import shuuten
 
-shuuten.init(shuuten.ShuutenConfig(app='my-app', env='dev'))
+shuuten.init(shuuten.Config(app='my-app', env='dev'))
 log = shuuten.get_logger(__name__)
+
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
@@ -94,7 +95,7 @@ def handler(event, context):
 
 ## Configuration
 
-You can configure Shuuten via `ShuutenConfig` in code **or** environment variables.
+You can configure Shuuten via `Config` in code **or** environment variables.
 
 | Variable                  | Description                                       | Default   |
 |---------------------------|---------------------------------------------------|-----------|
