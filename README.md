@@ -1,7 +1,7 @@
 <div align="center">
-<img alt="logo" width="175" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
+<img alt="logo" width="160" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
 
-## Shuuten Signal
+**Shuuten Signal — last-stop signals for automation failures**
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
@@ -13,47 +13,131 @@
 
 <!--intro-start-->
 
-**Last-stop signals for automation failures.**
+**Shuuten sends structured Slack and email alerts** when your Python automations fail — especially in AWS Lambda and ECS — with minimal setup and zero dependencies.
 
-*終点 (Shuuten) means “final stop” or “terminus” in Japanese — the point where a workflow ends and signals that something needs attention.*
+*終点 (Shūten) means "final stop" in Japanese — the point where a workflow ends and signals that something needs attention.*
 
-> 終点 (Shuuten): the final stop — where automations end and signal for attention.
+📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
 
-📖 Docs: [shuuten.ritviknag.com](https://shuuten.ritviknag.com) · ⭐ Star: [GitHub](https://github.com/rnag/shuuten)
+### Quick start (AWS Lambda)
 
----
+```python
+import shuuten
 
-## About
+@shuuten.capture
+def lambda_handler(event, context):
+    shuuten.debug('debug info')      # not sent
+    shuuten.error('domain error')    # sent to Slack
+    1 / 0                            # sent with stack trace
+```
 
-Shuuten Signal provides structured, safe failure notifications for Python automations running in AWS Lambda, ECS, and beyond.
+Set one environment variable and you’re done
+(see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
 
-In v0.1.0, Shuuten focuses on being a lightweight, dependency-free foundation for sending failure signals from automation workflows.
+```bash
+export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+```
 
-## Features
+## Why Shuuten?
 
-- Dependency-free Slack Incoming Webhook notifications
-- Designed for AWS Lambda, ECS, and container-based automations
-- Minimal surface area, easy to extend
+* **Built for failure paths** — only `ERROR+` signals are sent by default
+* **Zero dependencies** — no SDKs, agents, or background workers
+* **Designed for AWS** — Lambda, ECS tasks, and containers work out of the box
+* **Logging-native** — uses familiar `logging` semantics
+* **Opinionated but minimal** — small surface area, easy to reason about
 
-## Install
+## Installation
 
-```shell
+```bash
 pip install shuuten
 ```
 
-## Usage
+## Usage patterns
 
-```python3
+### Structured logging (logging-style)
+
+```python
 import shuuten
 
-hook_url = "https://hooks.slack.com/services/<team>/<channel>/<token>"  # keep this secret
-payload = {'text': 'Hello from Shuuten 👋 (webhook test)'}
-
-shuuten.send_to_slack(hook_url, payload)
+def handler(event, context):
+    shuuten.info('hello')        # not sent
+    shuuten.error('bad input')   # sent to Slack
 ```
+
+### Explicit logger + email notifications
+
+```python
+import shuuten
+
+shuuten.init(shuuten.ShuutenConfig(app='my-app', env='dev'))
+log = shuuten.get_logger(__name__)
+
+@shuuten.capture(workflow='my-workflow')
+def handler(event, context):
+    log.critical('Something went wrong')  # sent to Slack + Email
+```
+
+### Manual context control (advanced)
+
+```python
+import shuuten
+
+def handler(event, context):
+    token = shuuten.detect_and_set_context(context)
+    try:
+        ...
+    finally:
+        shuuten.reset_runtime_context(token)
+```
+
+> The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
+
+## Configuration
+
+You can configure Shuuten via `ShuutenConfig` in code **or** environment variables.
+
+| Variable                  | Description                                       | Default   |
+|---------------------------|---------------------------------------------------|-----------|
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)     | auto      |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.) | auto      |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                | `ERROR`   |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying          | `true`    |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)        | `WARNING` |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Slack dedupe window (seconds); `0` disables       | `30`      |
+
+### Slack
+
+| Variable                    | Description                |
+|-----------------------------|----------------------------|
+| `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
+| `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
+
+### Email (SES)
+
+| Variable               | Description                    |
+|------------------------|--------------------------------|
+| `SHUUTEN_SES_FROM`     | Verified SES sender            |
+| `SHUUTEN_SES_TO`       | Comma-separated recipient list |
+| `SHUUTEN_SES_REPLY_TO` | Optional reply-to address      |
+| `SHUUTEN_SES_REGION`   | Optional SES region            |
+
+## Supported destinations
+
+* **Slack** (Incoming Webhooks)
+* **Email** (AWS SES)
+  > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
+  See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
+
+## Roadmap
+
+* PagerDuty and other alerting destinations
+* Context manager for exception capture
+* Optional "exceptions-only" alerting mode
+* Expanded ECS and EKS support
 
 ## Credits
 
-This package was created with [Cookiecutter](https://github.com/audreyfeldroy/cookiecutter) and the [audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage) project template.
+Created with Cookiecutter using
+[https://github.com/audreyfeldroy/cookiecutter-pypackage](https://github.com/audreyfeldroy/cookiecutter-pypackage)
 
 <!--intro-end-->

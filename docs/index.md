@@ -1,8 +1,8 @@
-![Shuuten logo](https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png){ width="175" style="display:block;margin:auto;" }
-
-## Shuuten Signal {: style="text-align:center;" }
+![Shuuten logo](https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png){ width="160" style="display:block;margin:auto;" }
 
 <div style="text-align:center" markdown>
+
+#### Shuuten Signal — last-stop signals for automation failures
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
@@ -25,8 +25,8 @@
 - [Readme]("../README.md")
 - [Installation](installation.md)
 - [Usage](usage.md)
-- [Contributing]("../CONTRIBUTING.md")
-- [History]("../HISTORY.md")
+- [Contributing](contributing.md)
+- [History](history.md)
 
 ## Indices and tables
 
