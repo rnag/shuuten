@@ -171,7 +171,7 @@ class SESDestination:
 
     def _client(self):
         try:
-            import boto3
+            import boto3  # type: ignore[unresolved-import]
         except ImportError as e:
             raise RuntimeError(
                 'boto3 is required for SES email delivery. '

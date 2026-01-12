@@ -37,8 +37,7 @@ jobs:
           ruff check .
 
       - name: Type check (ty)
-        run: |
-          ty check
+        run: ty check --python "$(python -c 'import sys; print(sys.executable)')"
 
       - name: Tests (pytest)
         run: |
