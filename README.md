@@ -49,7 +49,8 @@ export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 ## Installation
 
 ```bash
-pip install shuuten
+pip install shuuten             # no dependencies (Slack, local logging)
+pip install "shuuten[email]"    # SES email (boto3) outside AWS Lambda
 ```
 
 ## Usage patterns
@@ -61,10 +62,12 @@ import shuuten
 
 def handler(event, context):
     shuuten.info('hello')        # not sent
-    shuuten.error('bad input')   # sent to Slack
+    shuuten.error('bad input')   # sent to Slack if configured
 ```
 
 ### Explicit logger + email notifications
+
+> Requires SES env vars (`SHUUTEN_SES_FROM`, `SHUUTEN_SES_TO`). Email is sent via AWS SES if configured.
 
 ```python
 import shuuten
@@ -75,7 +78,7 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical('Something went wrong')  # sent to Slack + Email
+    log.critical('Something went wrong')  # sent to Slack + Email (if configured)
 ```
 
 ### Manual context control (advanced)

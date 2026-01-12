@@ -6,12 +6,16 @@ To install Shuuten Signal, run this command in your terminal:
 
 ```sh
 uv add shuuten
+# For SES email outside AWS Lambda:
+uv add "shuuten[email]"
 ```
 
 Or if you prefer to use `pip`:
 
 ```sh
 pip install shuuten
+# For SES email outside AWS Lambda:
+pip install "shuuten[email]"
 ```
 
 ## From source
