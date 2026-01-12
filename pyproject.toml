@@ -1,6 +1,6 @@
 [project]
 name = "shuuten"
-version = "0.2.0"
+version = "0.1.1"
 description = "Last-stop signals for automation failures."
 readme = "README.md"
 requires-python = ">=3.9"
