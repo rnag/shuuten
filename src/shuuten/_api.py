@@ -11,7 +11,7 @@ from ._integrations import (
     SlackNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
-from ._models import Event, Platform, Config
+from ._models import Config, Event, Platform
 from ._notifier import Notifier
 from ._runtime import detect_and_set_context, reset_runtime_context
 
