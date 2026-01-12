@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from html import escape as h
 
-import boto3
-
 from .._models import Event
 
 
@@ -172,8 +170,14 @@ class SESDestination:
     region_name: str | None = None  # optional override
 
     def _client(self):
-        # region: prefer runtime region if you want; otherwise
-        # env / boto default chain
+        try:
+            import boto3
+        except ImportError as e:
+            raise RuntimeError(
+                'boto3 is required for SES email delivery. '
+                'Install it or disable email notifications.'
+            ) from e
+
         if self.region_name:
             return boto3.client('ses', region_name=self.region_name)
         return boto3.client('ses')
