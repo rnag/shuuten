@@ -43,7 +43,7 @@ class ShuutenContextFilter(logging.Filter):
         return True
 
 
-class SlackNotificationHandler(Handler):
+class ShuutenNotificationHandler(Handler):
     """
     Forwards ERROR+ log records to the global Shuuten notifier (or
     a passed-in notifier).

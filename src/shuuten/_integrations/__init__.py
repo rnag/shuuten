@@ -1,11 +1,11 @@
 __all__ = [
     'ShuutenContextFilter',
     'ShuutenJSONFormatter',
-    'SlackNotificationHandler',
+    'ShuutenNotificationHandler',
 ]
 
 from ._logging import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
-    SlackNotificationHandler,
+    ShuutenNotificationHandler,
 )

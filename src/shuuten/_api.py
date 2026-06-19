@@ -4,11 +4,11 @@ from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
 
-from ._destinations import SESDestination, SlackWebhookDestination
+from ._destinations import SESDestination, SlackWebhookDestination, MSTeamsWebhookDestination
 from ._integrations import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
-    SlackNotificationHandler,
+    ShuutenNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
 from ._models import Config, Event, Platform
@@ -102,8 +102,9 @@ def init(
 
     destinations = []
     slack_url = config.slack_webhook_url
+    teams_url = config.teams_webhook_url
 
-    # DESTINATIONS
+    # [DESTINATIONS]
     # Slack
     if slack_url is not None:
         LOG.debug('Slack: Found webhook %s', slack_url)
@@ -112,6 +113,13 @@ def init(
             slack_format=config.slack_format,
         )
         destinations.append(slack_destination)
+    # MS Teams
+    if teams_url is not None:
+        LOG.debug('MS Teams: Found webhook %s', teams_url)
+        teams_destination = MSTeamsWebhookDestination(
+            webhook_url=teams_url,
+        )
+        destinations.append(teams_destination)
     # Email
     if ses_from and ses_to:
         LOG.debug('SES: Found FROM (%s) and TO (%s)', ses_from, ses_to)
@@ -128,13 +136,14 @@ def init(
         destinations=destinations,
     )
 
-    if slack_url is not None:
-        slack_handler = SlackNotificationHandler(
+    if destinations:
+        notification_handler = ShuutenNotificationHandler(
             _NOTIFIER,
             min_level=config.min_level,
             dedupe_window_s=config.dedupe_window_s,
         )
-        _HANDLERS.append(slack_handler)
+        # noinspection PyTypeChecker
+        _HANDLERS.append(notification_handler)
 
 
 def get_logger(name: str | None = None, configure_root: bool = False):
