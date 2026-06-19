@@ -2,7 +2,7 @@
 
 <div style="text-align:center" markdown>
 
-#### Shuuten Signal — last-stop signals for automation failures
+#### Shuuten — last-stop alerts for Python automations
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
