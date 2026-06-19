@@ -11,9 +11,10 @@ from ._integrations import (
     ShuutenNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, Platform
+from ._models import Config, Event, Platform, NotificationContext
 from ._notifier import Notifier
-from ._runtime import detect_and_set_context, reset_runtime_context
+from ._runtime import detect_and_set_context, reset_runtime_context, set_notification_context, \
+    reset_notification_context
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None
@@ -192,6 +193,8 @@ def capture(
     Captures exceptions, enriches them with runtime context, and
     notifies configured destinations. Exceptions are re-raised
     by default.
+
+    Summary used only if the wrapped function raises.
     """
     init(config)  # Initialize config (or from env if config=None) if needed
     notifier = notifier or _NOTIFIER
@@ -202,7 +205,13 @@ def capture(
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
 
-            token = detect_and_set_context(ctx_obj, platform)
+            rt_token = detect_and_set_context(ctx_obj, platform)
+            notify_token = set_notification_context(
+                NotificationContext(
+                    workflow=workflow,
+                    action=action or fn.__qualname__,
+                )
+            )
 
             try:
                 return fn(*args, **kwargs)
@@ -232,7 +241,8 @@ def capture(
                 return None
 
             finally:
-                reset_runtime_context(token)
+                reset_notification_context(notify_token)
+                reset_runtime_context(rt_token)
 
         return wrapper
 

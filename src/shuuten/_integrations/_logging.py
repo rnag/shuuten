@@ -8,7 +8,7 @@ from time import time
 
 from .._log import LOG
 from .._models import Event
-from .._runtime import get_runtime_context
+from .._runtime import get_runtime_context, get_notification_context
 
 _BASE_LOG_KEYS = frozenset(
     {
@@ -99,6 +99,25 @@ class ShuutenNotificationHandler(Handler):
         return True
 
     def emit(self, record: LogRecord) -> None:
+        notify_ctx = get_notification_context()
+
+        workflow = (
+            getattr(record, 'shuuten_workflow', None)
+            or (notify_ctx.workflow if notify_ctx else None)
+            or self._workflow
+        )
+
+        action = (
+            getattr(record, 'shuuten_action', None)
+            or (notify_ctx.action if notify_ctx else None)
+            or record.name
+        )
+
+        subject_id = (
+            getattr(record, 'shuuten_subject_id', None)
+            or (notify_ctx.subject_id if notify_ctx else None)
+        )
+
         # record.getMessage() formats %s args
         msg = record.getMessage()
         if not self._should_send(record, msg):
@@ -131,14 +150,14 @@ class ShuutenNotificationHandler(Handler):
             )
 
             level = record.levelname.lower()
-            action = record.name
 
             event = Event(
                 level=level,
                 summary=self._default_summary,
                 message=msg,
-                workflow=self._workflow,
+                workflow=workflow,
                 action=action,
+                subject_id=subject_id,
                 env=None,
                 context=context,
             )

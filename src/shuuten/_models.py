@@ -211,6 +211,13 @@ class Event:
 
 
 @dataclass(frozen=True, slots=True)
+class NotificationContext:
+    workflow: str | None = None
+    action: str | None = None
+    subject_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class RuntimeContext:
     platform: str  # 'lambda' | 'ecs' | 'local'
     region: str | None

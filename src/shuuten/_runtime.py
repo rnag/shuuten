@@ -7,12 +7,29 @@ from ._models import (
     Platform,
     RuntimeContext,
     detect_context,
-    from_lambda_context,
+    from_lambda_context, NotificationContext,
+)
+
+_notification_ctx: ContextVar[NotificationContext | None] = ContextVar(
+    'shuuten_notification_ctx',
+    default=None,
 )
 
 _runtime_ctx: ContextVar[RuntimeContext | None] = ContextVar(
     'shuuten_runtime_ctx', default=None
 )
+
+
+def set_notification_context(ctx: NotificationContext | None) -> Token:
+    return _notification_ctx.set(ctx)
+
+
+def reset_notification_context(token: Token) -> None:
+    _notification_ctx.reset(token)
+
+
+def get_notification_context() -> NotificationContext | None:
+    return _notification_ctx.get()
 
 
 def set_lambda_context(ctx_obj: Any) -> Token:
