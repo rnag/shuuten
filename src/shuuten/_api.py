@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
+from uuid import uuid4
 
 from ._destinations import SESDestination, SlackWebhookDestination, MSTeamsWebhookDestination
 from ._integrations import (
@@ -204,12 +205,14 @@ def capture(
         def wrapper(*args, **kwargs):
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
+            run_id = str(uuid4())
 
             rt_token = detect_and_set_context(ctx_obj, platform)
             notify_token = set_notification_context(
                 NotificationContext(
                     workflow=workflow,
                     action=action or fn.__qualname__,
+                    run_id=run_id,
                 )
             )
 
@@ -230,6 +233,7 @@ def capture(
                     action=action or fn.__qualname__,
                     subject_id=subject_id,
                     context=context,
+                    run_id=run_id,
                 )
 
                 if notifier is not None:

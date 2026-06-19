@@ -5,6 +5,7 @@ from hashlib import sha1
 from json import dumps
 from logging import ERROR, Formatter, Handler, LogRecord
 from time import time
+from uuid import uuid4
 
 from .._log import LOG
 from .._models import Event
@@ -158,6 +159,7 @@ class ShuutenNotificationHandler(Handler):
                 workflow=workflow,
                 action=action,
                 subject_id=subject_id,
+                run_id=(notify_ctx.run_id if notify_ctx else str(uuid4())),
                 env=None,
                 context=context,
             )
