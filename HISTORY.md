@@ -1,5 +1,25 @@
 # History
 
+## 0.3.0 (2026-06-18)
+
+### Added
+- `ShuutenJSONFormatter` now supports `extra={'data': {...}}` to merge arbitrary fields
+  top-level into the JSON log output, making structured logging cleaner in CloudWatch.
+- `ShuutenJSONFormatter` now embeds `dict` and `list` values passed directly as `msg`
+  as native JSON objects rather than stringified representations.
+- `info_json()`, `debug_json()`, and `error_json()` convenience functions for structured
+  logging via the `shuuten.*` module-level API.
+- `SlackNotificationHandler` now also picks up `extra={'data': {...}}` and merges it
+  into the event context forwarded to Slack.
+
+### Changed
+- `_BASE_LOG_KEYS` constant defined in `_integrations/_logging.py` to guard against
+  key conflicts in `data` extra.
+
+### Fixed
+- Passing reserved `data` keys that conflict with built-in log output fields now raises
+  a clear `ValueError` instead of silently overwriting output fields.
+
 ## 0.2.0 (2026-01-12)
 
 ### Added
