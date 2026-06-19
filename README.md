@@ -1,7 +1,7 @@
 <div align="center">
 <img alt="logo" width="160" src="https://raw.githubusercontent.com/rnag/shuuten/main/img/logo.png">
 
-**Shuuten Signal — last-stop signals for automation failures**
+**Shuuten — last-stop alerts for Python automations**
 
 [![PyPI version](https://img.shields.io/pypi/v/shuuten.svg)](https://pypi.org/project/shuuten)
 [![PyPI license](https://img.shields.io/pypi/l/shuuten.svg)](https://pypi.org/project/shuuten)
@@ -13,38 +13,42 @@
 
 <!--intro-start-->
 
-**Shuuten sends structured Slack and email alerts** when your Python automations fail — especially in AWS Lambda and ECS — with minimal setup and zero dependencies.
+**Stop writing boilerplate alert code.** Shuuten gives your Python automations structured JSON logging and instant Slack (or email) alerts when things go wrong — with zero dependencies and minimal setup.
 
-*終点 (Shūten) means "final stop" in Japanese — the point where a workflow ends and signals that something needs attention.*
+Built for AWS Lambda and ECS, works anywhere Python runs.
+
+*終点 (Shūten) — "final stop" in Japanese. The last line of defense before a silent failure.*
 
 📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
 
-### Quick start (AWS Lambda)
+## Why Shuuten?
+
+* **Zero dependencies** — no SDKs, agents, or background workers
+* **3 lines to set up** — decorator + one env var and you're done
+* **Structured JSON logs** — CloudWatch-friendly out of the box
+* **Built for failure paths** — only `ERROR+` alerts are sent by default, no noise
+* **Designed for AWS** — Lambda, ECS tasks, and containers work out of the box
+* **Logging-native** — uses familiar `logging` semantics, no new concepts
+
+## Quick start (AWS Lambda)
 
 ```python
 import shuuten
 
 @shuuten.capture
 def lambda_handler(event, context):
-    shuuten.debug('debug info')      # not sent
-    shuuten.error('domain error')    # sent to Slack
-    1 / 0                            # sent with stack trace
+    shuuten.debug('debug info')      # logged locally, not sent
+    shuuten.error('domain error')    # → Slack
+    1 / 0                            # → Slack with full stack trace
 ```
 
-Set one environment variable and you’re done
-(see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
+One environment variable (see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
 
 ```bash
 export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 ```
 
-## Why Shuuten?
-
-* **Built for failure paths** — only `ERROR+` signals are sent by default
-* **Zero dependencies** — no SDKs, agents, or background workers
-* **Designed for AWS** — Lambda, ECS tasks, and containers work out of the box
-* **Logging-native** — uses familiar `logging` semantics
-* **Opinionated but minimal** — small surface area, easy to reason about
+That's it.
 
 ## Installation
 
@@ -188,7 +192,9 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 
 ## Roadmap
 
-* PagerDuty and other alerting destinations
+* MS Teams webhook destination
+* Structlog processor integration
+* PagerDuty / JSM Alerting destination
 * Context manager for exception capture
 * Optional "exceptions-only" alerting mode
 * Expanded ECS and EKS support

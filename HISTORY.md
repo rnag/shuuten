@@ -1,5 +1,13 @@
 # History
 
+## 0.3.1 (2026-06-18)
+
+### Changed
+- Updated package description and README tagline to better reflect the library's purpose.
+- Added `py.typed` marker for PEP 561 compliance — type checkers now recognize shuuten as a typed package.
+- Added classifiers: `Topic :: Communications :: Chat`, `Topic :: Internet`, `Typing :: Typed`.
+- Updated roadmap with concrete planned destinations (MS Teams, PagerDuty, JSM Alerting, structlog).
+
 ## 0.3.0 (2026-06-18)
 
 ### Added

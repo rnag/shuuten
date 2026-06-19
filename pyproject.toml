@@ -1,7 +1,7 @@
 [project]
 name = "shuuten"
 version = "0.3.0"
-description = "Last-stop signals for automation failures."
+description = "Last-stop alerts for Python automations."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -37,9 +37,13 @@ classifiers = [
   # Indicate who your project is intended for
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
+  "Environment :: Other Environment",
+  "Topic :: Communications :: Chat",
+  "Topic :: Internet",
   "Topic :: System :: Logging",
   "Topic :: System :: Monitoring",
   "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
   # Specify the Python versions you support here.
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -119,3 +123,6 @@ quote-style = "single"
 
 [tool.uv]
 package = true
+
+[tool.setuptools.package-data]
+shuuten = ["py.typed"]
