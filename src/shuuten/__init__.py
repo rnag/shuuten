@@ -1,4 +1,5 @@
 """Top-level package for Shuuten Signal."""
+
 from __future__ import annotations
 
 __author__ = """Ritvik Nag"""
@@ -16,8 +17,14 @@ __all__ = [
     'detect_and_set_context',
     'reset_runtime_context',
     # logging functions
-    'log', 'debug', 'info', 'warning',
-    'error', 'exception', 'critical', 'fatal',
+    'log',
+    'debug',
+    'info',
+    'warning',
+    'error',
+    'exception',
+    'critical',
+    'fatal',
     # models
     'Config',
     # classes
@@ -43,6 +50,7 @@ LOG.addHandler(NullHandler())
 
 def version():
     from importlib.metadata import version as _version
+
     return _version('shuuten')
 
 

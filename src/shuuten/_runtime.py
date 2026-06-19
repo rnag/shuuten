@@ -11,8 +11,8 @@ from ._models import (
 )
 
 _runtime_ctx: ContextVar[RuntimeContext | None] = ContextVar(
-    'shuuten_runtime_ctx',
-    default=None)
+    'shuuten_runtime_ctx', default=None
+)
 
 
 def set_lambda_context(ctx_obj: Any) -> Token:
@@ -21,8 +21,8 @@ def set_lambda_context(ctx_obj: Any) -> Token:
 
 
 def detect_and_set_context(
-        context=None,
-        platform: Platform = Platform.AUTO,
+    context=None,
+    platform: Platform = Platform.AUTO,
 ) -> Token:
     rt_context = detect_context(context, platform)
     return set_runtime_context(rt_context)

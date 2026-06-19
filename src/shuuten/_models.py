@@ -82,8 +82,13 @@ class Config:
         out = replace(self)
 
         # Scalars: None => no override
-        for name in ('app', 'env', 'slack_webhook_url', 'ses_from',
-                     'ses_region'):
+        for name in (
+            'app',
+            'env',
+            'slack_webhook_url',
+            'ses_from',
+            'ses_region',
+        ):
             v = getattr(other, name)
             if v is not None:
                 setattr(out, name, v)
@@ -138,15 +143,15 @@ class Config:
             dedupe_window_s=parse_float(
                 os.getenv('SHUUTEN_DEDUPE_WINDOW_S'),
                 default=30.0,
-            )
+            ),
         )
 
 
 @dataclass(slots=True)
 class Event:
-    level: str                    # 'ERROR' | 'WARNING' | 'INFO'
-    summary: str                  # "Automation failed" / "Log forwarded"
-    message: str | None = None    # actual log line or str(exc)
+    level: str  # 'ERROR' | 'WARNING' | 'INFO'
+    summary: str  # "Automation failed" / "Log forwarded"
+    message: str | None = None  # actual log line or str(exc)
 
     # if None, renderer can use config env ('prod')
     env: str | None = None
@@ -199,7 +204,7 @@ class Event:
 
 @dataclass(frozen=True, slots=True)
 class RuntimeContext:
-    platform: str                  # 'lambda' | 'ecs' | 'local'
+    platform: str  # 'lambda' | 'ecs' | 'local'
     region: str | None
     account_id: str | None
     # from env
@@ -228,10 +233,10 @@ class RuntimeContext:
         if self.region and self.log_group:
             if self.log_stream:
                 return cloudwatch_log_stream_link(
-                    self.region, self.log_group, self.log_stream)
+                    self.region, self.log_group, self.log_stream
+                )
             else:
-                return cloudwatch_log_stream_link(
-                    self.region, self.log_group)
+                return cloudwatch_log_stream_link(self.region, self.log_group)
         return None
 
     def base_source(self) -> dict[str, Any]:
@@ -274,8 +279,8 @@ def sniff_region() -> str | None:
 
 
 def detect_context(
-        context=None,
-        platform: Platform = Platform.AUTO,
+    context=None,
+    platform: Platform = Platform.AUTO,
 ) -> RuntimeContext:
     """
     if no context is explicitly set:
@@ -296,20 +301,26 @@ def detect_context(
     return from_local()
 
 
-def from_lambda_context(context: Any,
-                        fn_name: str | None = None) -> RuntimeContext:
+def from_lambda_context(
+    context: Any, fn_name: str | None = None
+) -> RuntimeContext:
     region = sniff_region()
 
     account_name = getenv('AWS_ACCOUNT_NAME')
     source_code = getenv('SOURCE_CODE')
 
-    fn = (fn_name or getattr(context, 'function_name', None)
-          or getenv('AWS_LAMBDA_FUNCTION_NAME'))
+    fn = (
+        fn_name
+        or getattr(context, 'function_name', None)
+        or getenv('AWS_LAMBDA_FUNCTION_NAME')
+    )
     req = getattr(context, 'aws_request_id', None)
-    lg = (getattr(context, 'log_group_name', None)
-          or getenv('AWS_LAMBDA_LOG_GROUP_NAME'))
-    ls = (getattr(context, 'log_stream_name', None)
-          or getenv('AWS_LAMBDA_LOG_STREAM_NAME'))
+    lg = getattr(context, 'log_group_name', None) or getenv(
+        'AWS_LAMBDA_LOG_GROUP_NAME'
+    )
+    ls = getattr(context, 'log_stream_name', None) or getenv(
+        'AWS_LAMBDA_LOG_STREAM_NAME'
+    )
     arn = getattr(context, 'invoked_function_arn', None)
     account_id = None
     if isinstance(arn, str):
@@ -343,13 +354,16 @@ def _parse_arn_region_account(arn: str) -> tuple[str | None, str | None]:
 def from_ecs(ecs_metadata: str | None = None) -> RuntimeContext | None:
     base = ecs_metadata or getenv('ECS_CONTAINER_METADATA_URI_V4')
     if not base:
-        docs_link = ('https://docs.aws.amazon.com/AmazonECS/latest/userguide/'
-                     'task-metadata-endpoint-v4-fargate.html')
+        docs_link = (
+            'https://docs.aws.amazon.com/AmazonECS/latest/userguide/'
+            'task-metadata-endpoint-v4-fargate.html'
+        )
         LOG.info(
             f'Environment variable "ECS_CONTAINER_METADATA_URI_V4" not defined '
             'in task; consider updating to platform version 1.4.0 to enable '
             'this feature. Please refer to the following docs:\n'
-            f'  {docs_link}')
+            f'  {docs_link}'
+        )
         return None
 
     account_name = getenv('AWS_ACCOUNT_NAME')

@@ -108,5 +108,8 @@ select = [
     "UP",  # pyupgrade
 ]
 
+[tool.ruff.format]
+quote-style = "single"
+
 [tool.uv]
 package = true

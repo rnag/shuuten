@@ -103,8 +103,10 @@ def _html_body(event: Event) -> str:
         if not d:
             return '<i>none</i>'
         rows = ''.join(row(h(str(k)), h(str(v))) for k, v in d.items())
-        return ('<table style="border-collapse:collapse;width:100%;'
-                f'background:#fff;border:1px solid #eee;">{rows}</table>')
+        return (
+            '<table style="border-collapse:collapse;width:100%;'
+            f'background:#fff;border:1px solid #eee;">{rows}</table>'
+        )
 
     exc_block = ''
     if event.exception:
@@ -118,11 +120,11 @@ def _html_body(event: Event) -> str:
 
     color = _level_color(event.level)
 
-    msg_block = ""
+    msg_block = ''
     if event.message:
         msg = event.message
         if len(msg) > 4000:
-            msg = msg[:4000] + "\n…(truncated)…"
+            msg = msg[:4000] + '\n…(truncated)…'
         msg_block = f"""
           <h3 style="margin:16px 0 8px 0;">Message</h3>
           <pre style="white-space:pre-wrap;background:#f2f3f5;color:#111;
@@ -134,8 +136,12 @@ def _html_body(event: Event) -> str:
       <body style="font-family:Arial, sans-serif;background:#f6f7f9;padding:16px;">
         <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e6e6e6;border-radius:10px;overflow:hidden;">
           <div style="background:{color};color:#fff;padding:12px 16px;">
-            <div style="font-size:16px;font-weight:700;">{h(event.summary)}</div>
-            <div style="font-size:12px;opacity:0.9;">{event.level} · {esc_env} · {esc_workflow} · {esc_action}</div>
+            <div style="font-size:16px;font-weight:700;">{
+        h(event.summary)
+    }</div>
+            <div style="font-size:12px;opacity:0.9;">{event.level} · {
+        esc_env
+    } · {esc_workflow} · {esc_action}</div>
           </div>
 
           <div style="padding:16px;">
@@ -145,8 +151,9 @@ def _html_body(event: Event) -> str:
               {meta_rows}
             </table>
 
-            {('<h3 style="margin:16px 0 8px 0;">Links</h3>'
-              + links) if links else ''}
+            {
+        ('<h3 style="margin:16px 0 8px 0;">Links</h3>' + links) if links else ''
+    }
 
             <h3 style="margin:16px 0 8px 0;">Source</h3>
             {table_from_dict(event.source)}
@@ -201,7 +208,7 @@ class SESDestination:
                     'Text': {'Data': text, 'Charset': 'UTF-8'},
                     'Html': {'Data': html, 'Charset': 'UTF-8'},
                 },
-            }
+            },
         }
 
         if self.reply_to:

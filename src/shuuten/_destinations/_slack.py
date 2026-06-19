@@ -18,20 +18,23 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
 
     # Header: plain_text only
     if exc_text:
-        header_text = f"🚨 {event.summary}"
-        top_line = f"*{event.level}* — `{event.action}`"
+        header_text = f'🚨 {event.summary}'
+        top_line = f'*{event.level}* — `{event.action}`'
     else:
         # for forwarded logs: show actual message in a visible way
-        header_text = (f"{event.level}: "
-                       f"{(event.message or event.summary or 'Log')}")
-        top_line = f"`{event.action}`"
+        header_text = (
+            f'{event.level}: {(event.message or event.summary or "Log")}'
+        )
+        top_line = f'`{event.action}`'
 
     blocks: list[dict] = [
         {
             'type': 'header',
-            'text': {'type': 'plain_text',
-                     'text': header_text[:150],
-                     'emoji': True},
+            'text': {
+                'type': 'plain_text',
+                'text': header_text[:150],
+                'emoji': True,
+            },
         },
         {
             'type': 'section',
@@ -41,11 +44,15 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
 
     # Put message in its own section (mrkdwn supports backticks)
     if (not exc_text) and event.message:
-        blocks.append({
-            'type': 'section',
-            'text': {'type': 'mrkdwn',
-                     'text': f"*Message*\n```{event.message[:1800]}```"},
-        })
+        blocks.append(
+            {
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    'text': f'*Message*\n```{event.message[:1800]}```',
+                },
+            }
+        )
 
     # Key fields (keep compact)
     f: list[dict] = []
@@ -60,9 +67,13 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
 
     # Optional call-site fields (if you include them)
     add_field(f, 'Logger', ctx.get('logger'))
-    add_field(f, 'File',
-              f"{ctx.get('file')}:{ctx.get('lineno')}"
-              if ctx.get('file') and ctx.get('lineno') else None)
+    add_field(
+        f,
+        'File',
+        f'{ctx.get("file")}:{ctx.get("lineno")}'
+        if ctx.get('file') and ctx.get('lineno')
+        else None,
+    )
 
     if f:
         blocks.append({'type': 'section', 'fields': f[:10]})
@@ -79,16 +90,25 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
         links.append(f'<{repo}|Source>')
 
     if links:
-        blocks.append({'type': 'section',
-                       'text': {'type': 'mrkdwn', 'text': ' · '.join(links)}})
+        blocks.append(
+            {
+                'type': 'section',
+                'text': {'type': 'mrkdwn', 'text': ' · '.join(links)},
+            }
+        )
 
     # Exception (only when present)
     if exc_text:
         trimmed = exc_text[-2500:]
-        blocks.append({
-            'type': 'section',
-            'text': {'type': 'mrkdwn', 'text': f'*Exception*\n```{trimmed}```'},
-        })
+        blocks.append(
+            {
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    'text': f'*Exception*\n```{trimmed}```',
+                },
+            }
+        )
 
     # Context: don’t repeat logger/file/etc (it’s already shown)
     context_for_slack = dict(ctx)
@@ -98,17 +118,21 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
     if context_for_slack:
         ctx_json = json.dumps(context_for_slack, indent=2, default=str)
         ctx_json = ctx_json[:1500]
-        blocks.append({
-            'type': 'section',
-            'text': {'type': 'mrkdwn', 'text': f'*Details*\n```{ctx_json}```'},
-        })
+        blocks.append(
+            {
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    'text': f'*Details*\n```{ctx_json}```',
+                },
+            }
+        )
 
     blocks.append({'type': 'divider'})
     return blocks
 
 
 class SlackWebhookDestination:
-
     __slots__ = (
         '_webhook_url',
         '_username',
@@ -116,11 +140,12 @@ class SlackWebhookDestination:
     )
 
     def __init__(
-            self,
-            webhook_url: str,
-            slack_format: SlackFormat = SlackFormat.BLOCKS,
-            *,
-            username: str | None = None):
+        self,
+        webhook_url: str,
+        slack_format: SlackFormat = SlackFormat.BLOCKS,
+        *,
+        username: str | None = None,
+    ):
 
         self._webhook_url = webhook_url
         self._username = username
@@ -135,7 +160,7 @@ class SlackWebhookDestination:
             payload = {
                 # fallback for notifications/search
                 'text': f'{safe.level}: {fallback} ({safe.env})',
-                'blocks': slack_blocks_for_event(safe)
+                'blocks': slack_blocks_for_event(safe),
             }
         else:
             ctx = safe.context or {}
@@ -145,9 +170,9 @@ class SlackWebhookDestination:
                 f'🚨 *{safe.summary}*\n'
                 + (f'*app*: {app} | ' if app else '')
                 + f'*env*: {safe.env} | '
-                  f'*workflow*: {safe.workflow} | '
-                  f'*action*: {safe.action}\n'
-                  f'*run_id*: {safe.run_id}\n'
+                f'*workflow*: {safe.workflow} | '
+                f'*action*: {safe.action}\n'
+                f'*run_id*: {safe.run_id}\n'
             )
 
             if safe.subject_id:

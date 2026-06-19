@@ -60,6 +60,4 @@ def send_to_slack(webhook_url: str, payload: dict) -> None:
             return r
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
-        raise RuntimeError(
-            f'Slack webhook HTTP error {e.code}: {body}'
-        ) from e
+        raise RuntimeError(f'Slack webhook HTTP error {e.code}: {body}') from e
