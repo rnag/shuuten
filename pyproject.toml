@@ -99,6 +99,7 @@ Changelog = "https://github.com/rnag/shuuten/blob/main/CHANGELOG.md"
 unknown-argument = "ignore"
 no-matching-overload = "ignore"
 invalid-argument-type = "ignore"
+unresolved-import = "ignore"
 
 [tool.ruff]
 line-length = 80
