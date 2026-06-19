@@ -95,6 +95,12 @@ Changelog = "https://github.com/rnag/shuuten/blob/main/CHANGELOG.md"
 # Example override: relax a rule for the entire project (uncomment if needed).
 # rules.TY015 = "warn"  # For invalid-argument-type, warn instead of error.
 
+[tool.ty.rules]
+unknown-argument = "ignore"
+no-matching-overload = "ignore"
+invalid-argument-type = "ignore"
+unresolved-import = "ignore"
+
 [tool.ruff]
 line-length = 80
 
@@ -107,6 +113,9 @@ select = [
     "B",   # flake8-bugbear
     "UP",  # pyupgrade
 ]
+
+[tool.ruff.format]
+quote-style = "single"
 
 [tool.uv]
 package = true

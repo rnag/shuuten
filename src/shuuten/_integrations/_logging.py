@@ -10,17 +10,33 @@ from .._log import LOG
 from .._models import Event
 from .._runtime import get_runtime_context
 
+_BASE_LOG_KEYS = frozenset(
+    {
+        'ts',
+        'fn',
+        'file',
+        'lineno',
+        'level',
+        'msg',
+        'logger',
+        'stack',
+        'kind',
+        'shuuten',
+        'exc',
+    }
+)
+
 
 class DropInternalSlackNotifyFilter(logging.Filter):
     """
     Filter that drops records with `shuuten_no_notify`
     """
+
     def filter(self, record: logging.LogRecord) -> bool:
         return not getattr(record, 'shuuten_skip_slack', False)
 
 
 class ShuutenContextFilter(logging.Filter):
-
     def filter(self, record: logging.LogRecord) -> bool:
         # Attach for formatters/handlers
         record.shuuten_rt = get_runtime_context()
@@ -99,13 +115,20 @@ class SlackNotificationHandler(Handler):
             if isinstance(shuuten_extra, dict):
                 context |= {'shuuten': shuuten_extra}
 
+            # merge `data` dict top-level into output
+            data_extra = getattr(record, 'data', None)
+            if isinstance(data_extra, dict):
+                context |= data_extra  # merged top-level, not nested
+
             # Add call-site info (helpful in Slack)
-            context.update({
-                'logger': record.name,
-                'file': record.filename,
-                'lineno': record.lineno,
-                'func': record.funcName,
-            })
+            context.update(
+                {
+                    'logger': record.name,
+                    'file': record.filename,
+                    'lineno': record.lineno,
+                    'func': record.funcName,
+                }
+            )
 
             level = record.levelname.lower()
             action = record.name
@@ -131,25 +154,27 @@ class SlackNotificationHandler(Handler):
             # never raise from logging handler
             # noinspection PyBroadException
             try:
-                LOG.debug(
-                    f'{self.__class__.__name__} failed', exc_info=True
-                )
+                LOG.debug(f'{self.__class__.__name__} failed', exc_info=True)
             except Exception:
                 pass
 
 
 class ShuutenJSONFormatter(Formatter):
-
     def format(self, record: LogRecord) -> str:
-        base = {
+        base: dict[str, str | int | float | dict | list] = {
             'ts': record.created,
             'fn': record.funcName,
             'file': record.filename,
             'lineno': record.lineno,
             'level': record.levelname.lower(),
-            'msg': record.getMessage(),
             'logger': record.name,
         }
+
+        if isinstance(raw_msg := record.msg, (dict, list)) and not record.args:
+            base['msg'] = raw_msg  # embed as native JSON, not string
+        else:
+            base['msg'] = record.getMessage()
+
         if record.stack_info:
             base['stack'] = record.stack_info
         if getattr(record, 'shuuten_internal', False):
@@ -158,6 +183,20 @@ class ShuutenJSONFormatter(Formatter):
         extra = getattr(record, 'shuuten', None)
         if extra:
             base['shuuten'] = extra
+
+        # merge `data` dict top-level
+        data_extra = getattr(record, 'data', None)
+        if isinstance(data_extra, dict):
+            conflicts = set(data_extra) & _BASE_LOG_KEYS
+            if conflicts:
+                raise ValueError(
+                    f"shuuten: extra 'data' keys {sorted(conflicts)} "
+                    f'conflict with built-in log output fields. '
+                    f'Rename these keys in your data dict.'
+                ) from None
+
+            base |= data_extra
+
         if record.exc_info:
             base['exc'] = self.formatException(record.exc_info)
 

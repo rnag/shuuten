@@ -96,6 +96,60 @@ def handler(event, context):
 
 > The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
 
+### Structured logging with `extra`
+
+> Works with both `shuuten.info()` and `log = shuuten.get_logger(__name__)` — any logger using `ShuutenJSONFormatter`.
+
+#### Attach structured context with `data`
+
+Pass a dict under the `data` key in `extra` to merge fields top-level into the
+JSON log output:
+
+```python
+shuuten.info('Incoming event', extra={
+    'data': {
+        'method': 'POST',
+        'path': '/slack/events',
+        'status': 200,
+    }
+})
+# → {"ts": ..., "level": "info", "msg": "Incoming event", "method": "POST", "path": "/slack/events", "status": 200, ...}
+```
+
+> **Note:** Keys in `data` must not conflict with shuuten's built-in output
+> fields (`ts`, `fn`, `file`, `lineno`, `level`, `msg`, `logger`, `stack`,
+> `kind`, `shuuten`, `exc`). A `ValueError` is raised if they do:
+> ```
+> ValueError: shuuten: extra 'data' keys ['msg'] conflict with built-in log output fields.
+> ```
+
+#### Attach internal shuuten context
+
+Use the `shuuten` key to attach structured metadata that is nested under a
+`shuuten` field in the output:
+
+```python
+shuuten.info('Processing request', extra={'shuuten': {'caller': 'my_fn', 'request_id': '123'}})
+# → {"ts": ..., "msg": "Processing request", "shuuten": {"caller": "my_fn", "request_id": "123"}, ...}
+```
+
+#### Log a dict or list directly as `msg`
+
+Pass a Python `dict` or `list` directly as the message — it will be embedded
+as a native JSON object rather than a stringified representation:
+
+```python
+shuuten.info({'event': 'app_requested', 'app_id': 'A123', 'scopes': ['incoming-webhook']})
+# → {"ts": ..., "msg": {"event": "app_requested", "app_id": "A123", "scopes": [...]}, ...}
+```
+
+This also works with `shuuten.get_logger()`:
+
+```python
+log = shuuten.get_logger(__name__)
+log.info({'event': 'app_requested', 'app_id': 'A123'})
+```
+
 ## Configuration
 
 You can configure Shuuten via `Config` in code **or** environment variables.

@@ -10,9 +10,11 @@ from ._redact import redact
 from ._runtime import get_runtime_context
 
 if TYPE_CHECKING:
+
     class SupportsSend(Protocol):
-        def send(self, event: Event, *, exc_text: str | None = None) -> None:
-            ...
+        def send(
+            self, event: Event, *, exc_text: str | None = None
+        ) -> None: ...
 
 
 class Notifier:
@@ -27,6 +29,7 @@ class Notifier:
           (ex. SlackWebhookDestination)
 
     """
+
     __slots__ = (
         '_config',
         '_destinations',
@@ -42,8 +45,9 @@ class Notifier:
     ):
         self._config = config
         self._destinations = list(destinations) if destinations else []
-        self._logger = logger = (logger
-                                 or getLogger(f'{self._config.app}.shuuten'))
+        self._logger = logger = logger or getLogger(
+            f'{self._config.app}.shuuten'
+        )
         logger.propagate = True
 
     def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
@@ -66,24 +70,27 @@ class Notifier:
         exc_text = None
         if exc is not None:
             exc_text = ''.join(
-                format_exception(type(exc), exc, exc.__traceback__))
+                format_exception(type(exc), exc, exc.__traceback__)
+            )
             exc_text = redact(exc_text)
 
         # 1. local log (CloudWatch)
         if self._config.emit_local_log:
-            payload = redact({
-                'app': self._config.app,
-                'level': event.level,
-                'summary': event.summary,
-                'workflow': event.workflow,
-                'action': event.action,
-                'env': event.env,
-                'run_id': event.run_id,
-                'subject_id': event.subject_id,
-                'source': event.source,
-                'log_url': event.log_url,
-                'context': event.context,
-            })
+            payload = redact(
+                {
+                    'app': self._config.app,
+                    'level': event.level,
+                    'summary': event.summary,
+                    'workflow': event.workflow,
+                    'action': event.action,
+                    'env': event.env,
+                    'run_id': event.run_id,
+                    'subject_id': event.subject_id,
+                    'source': event.source,
+                    'log_url': event.log_url,
+                    'context': event.context,
+                }
+            )
             # log as structured dict (formatter can JSON-dump it)
             log_fn = getattr(self._logger, event.level, self._logger.error)
             log_fn(

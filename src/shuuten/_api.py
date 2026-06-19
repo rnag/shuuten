@@ -58,21 +58,25 @@ def notify_event(event: Event, *, exc: BaseException | None = None) -> None:
     _get_notifier().notify(event, exc=exc)
 
 
-def setup(config: Config | None = None,
-          *,
-          formatter: type[Formatter] = ShuutenJSONFormatter,
-          reset: bool = False,
-          logger_name: str | None = None,
-          configure_root: bool = False) -> Logger:
+def setup(
+    config: Config | None = None,
+    *,
+    formatter: type[Formatter] = ShuutenJSONFormatter,
+    reset: bool = False,
+    logger_name: str | None = None,
+    configure_root: bool = False,
+) -> Logger:
 
     init(config, formatter=formatter, reset=reset)
     return get_logger(logger_name, configure_root)
 
 
-def init(config: Config | None = None,
-         *,
-         formatter: type[Formatter] = ShuutenJSONFormatter,
-         reset: bool = False):
+def init(
+    config: Config | None = None,
+    *,
+    formatter: type[Formatter] = ShuutenJSONFormatter,
+    reset: bool = False,
+):
     """
     auto-detect destinations via env vars
     """
@@ -82,9 +86,7 @@ def init(config: Config | None = None,
     if _HANDLERS is not None and not reset:
         return
 
-    config = (Config.from_env()
-              if config is None
-              else config.with_env_defaults())
+    config = Config.from_env() if config is None else config.with_env_defaults()
 
     if config.quiet_level is not None:
         quiet_third_party_logs(cast(int, config.quiet_level))
@@ -104,8 +106,7 @@ def init(config: Config | None = None,
     # DESTINATIONS
     # Slack
     if slack_url is not None:
-        LOG.debug('Slack: Found webhook %s',
-                  slack_url)
+        LOG.debug('Slack: Found webhook %s', slack_url)
         slack_destination = SlackWebhookDestination(
             webhook_url=slack_url,
             slack_format=config.slack_format,
@@ -113,8 +114,7 @@ def init(config: Config | None = None,
         destinations.append(slack_destination)
     # Email
     if ses_from and ses_to:
-        LOG.debug('SES: Found FROM (%s) and TO (%s)',
-                  ses_from, ses_to)
+        LOG.debug('SES: Found FROM (%s) and TO (%s)', ses_from, ses_to)
         email_destination = SESDestination(
             from_address=ses_from,
             to_addresses=ses_to,
@@ -137,18 +137,20 @@ def init(config: Config | None = None,
         _HANDLERS.append(slack_handler)
 
 
-def get_logger(name: str | None = None,
-               configure_root: bool = False):
+def get_logger(name: str | None = None, configure_root: bool = False):
     """
     JSON formatter + handler once
     """
     if _HANDLERS is None:
-        raise RuntimeError('shuuten.init() must be called '
-                           'before shuuten.get_logger()')
+        raise RuntimeError(
+            'shuuten.init() must be called before shuuten.get_logger()'
+        )
 
     if name is None and not configure_root:
-        raise RuntimeError('Refusing to mutate root logger '
-                           'formatting until configure_root=True')
+        raise RuntimeError(
+            'Refusing to mutate root logger '
+            'formatting until configure_root=True'
+        )
 
     log = getLogger(name)
 
@@ -197,10 +199,12 @@ def capture(
                 return fn(*args, **kwargs)
 
             except Exception as e:
-                subject_id = (subject_id_getter(args, kwargs)
-                              if subject_id_getter else None)
-                context = (context_getter(args, kwargs)
-                           if context_getter else {})
+                subject_id = (
+                    subject_id_getter(args, kwargs)
+                    if subject_id_getter
+                    else None
+                )
+                context = context_getter(args, kwargs) if context_getter else {}
                 event = Event(
                     level='error',
                     summary=summary,

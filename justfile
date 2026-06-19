@@ -1,4 +1,8 @@
 # Justfile for shuuten
+#
+# Setup:
+#   brew install uv just
+#   just init
 
 # Show available commands
 list:
@@ -6,7 +10,11 @@ list:
 
 # Install dev dependencies
 init:
-     pip install -e '.[docs, dev, email, lint, test]'
+    uv python install 3.14
+    rm -rf .venv
+    uv venv --python 3.14 .venv
+    UV_PROJECT_ENVIRONMENT=.venv uv sync --all-extras
+    uv run python --version
 
 # Bump PATCH version (0.0.x)
 bump-patch:
@@ -26,34 +34,34 @@ bump-patch-dry:
 
 # Run all the formatting, linting, and testing commands
 qa:
-    uv run --python=3.13 --extra test ruff format .
-    uv run --python=3.13 --extra test ruff check . --fix
-    uv run --python=3.13 --extra test ruff check --select I --fix .
-    uv run --python=3.13 --extra test ty check .
-    uv run --python=3.13 --extra test pytest .
+    uv run --python=3.14 --extra test ruff format .
+    uv run --python=3.14 --extra test ruff check . --fix
+    uv run --python=3.14 --extra test ruff check --select I --fix .
+    uv run --python=3.14 --extra test ty check .
+    uv run --python=3.14 --extra test pytest .
 
 # Run all the tests for all the supported Python versions
 testall:
     uv run --python=3.10 --extra test pytest
     uv run --python=3.11 --extra test pytest
     uv run --python=3.12 --extra test pytest
-    uv run --python=3.13 --extra test pytest
+    uv run --python=3.14 --extra test pytest
 
 # Run all the tests, but allow for arguments to be passed
 test *ARGS:
     @echo "Running with arg: {{ARGS}}"
-    uv run --python=3.13 --extra test pytest {{ARGS}}
+    uv run --python=3.14 --extra test pytest {{ARGS}}
 
 # Run all the tests, but on failure, drop into the debugger
 pdb *ARGS:
     @echo "Running with arg: {{ARGS}}"
-    uv run --python=3.13  --extra test pytest --pdb --maxfail=10 --pdbcls=IPython.terminal.debugger:TerminalPdb {{ARGS}}
+    uv run --python=3.14  --extra test pytest --pdb --maxfail=10 --pdbcls=IPython.terminal.debugger:TerminalPdb {{ARGS}}
 
 # Run coverage, and build to HTML
 coverage:
-    uv run --python=3.13 --extra test coverage run -m pytest .
-    uv run --python=3.13 --extra test coverage report -m
-    uv run --python=3.13 --extra test coverage html
+    uv run --python=3.14 --extra test coverage run -m pytest .
+    uv run --python=3.14 --extra test coverage report -m
+    uv run --python=3.14 --extra test coverage html
 
 # Build the project, useful for checking that packaging is correct
 build:
