@@ -1,4 +1,4 @@
-"""Slack webhook utilities for Shuuten."""
+"""Destination webhook utilities for Shuuten."""
 
 import json
 import ssl
@@ -29,14 +29,27 @@ def http_get_json(url) -> dict[str, Any]:
     return json.loads(body)
 
 
-def send_to_slack(webhook_url: str, payload: dict) -> None:
-    """
-    Send a message to Slack via Incoming Webhook.
+def send_to_slack(webhook_url: str, payload: dict) -> bytes:
+    return send_json_webhook(webhook_url, payload, destination='Slack')
 
-    :param webhook_url: Slack Incoming Webhook URL
-    :param payload: JSON-serializable Slack message payload
+
+def send_to_teams(webhook_url: str, payload: dict) -> bytes:
+    return send_json_webhook(webhook_url, payload, destination='MS Teams')
+
+
+def send_json_webhook(
+    webhook_url: str,
+    payload: dict,
+    *,
+    destination: str = 'webhook',
+) -> bytes:
+    """
+    Send a message to a destination via Incoming Webhook.
+
+    :param webhook_url: Incoming Webhook URL
+    :param payload: JSON-serializable message payload
                     (e.g. {"text": "Hello from Shuuten"})
-    :raises RuntimeError: if Slack returns a non-2xx response
+    :raises RuntimeError: if destination returns a non-2xx response
     :raises URLError: if the request fails at the network level
     """
     data = json.dumps(payload).encode('utf-8')
@@ -55,9 +68,9 @@ def send_to_slack(webhook_url: str, payload: dict) -> None:
             if resp.status >= 400:
                 body = r.decode('utf-8', errors='replace')
                 raise RuntimeError(
-                    f'Slack webhook failed with status {resp.status}: {body}'
+                    f'{destination} webhook failed with status {resp.status}: {body}'
                 )
             return r
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
-        raise RuntimeError(f'Slack webhook HTTP error {e.code}: {body}') from e
+        raise RuntimeError(f'{destination} webhook HTTP error {e.code}: {body}') from e

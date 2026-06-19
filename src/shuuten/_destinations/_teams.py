@@ -5,18 +5,37 @@ from __future__ import annotations
 import json
 
 from .._models import Event
-from .._requests import send_to_slack
+from .._requests import send_to_teams
 
 
-def _level_color(level: str) -> str:
-    level = (level or '').upper()
+def _level_style(level: str) -> str:
     return {
-        'DEBUG': '0078D4',
-        'INFO': '107C10',
-        'WARNING': 'FF8C00',
-        'ERROR': 'D13438',
-        'CRITICAL': '5C0000',
-    }.get(level, 'D13438')
+        'DEBUG': 'accent',
+        'INFO': 'good',
+        'WARNING': 'warning',
+        'ERROR': 'attention',
+        'CRITICAL': 'attention',
+    }.get((level or '').upper(), 'attention')
+
+
+def _level_emoji(level: str) -> str:
+    return {
+        'DEBUG': '🔎',
+        'INFO': 'ℹ️',
+        'WARNING': '⚠️',
+        'ERROR': '🚨',
+        'CRITICAL': '🔥',
+    }.get((level or '').upper(), '🚨')
+
+
+def _level_container_style(level: str) -> str:
+    return {
+        'DEBUG': 'emphasis',
+        'INFO': 'good',
+        'WARNING': 'warning',
+        'ERROR': 'attention',
+        'CRITICAL': 'attention',
+    }.get((level or '').upper(), 'attention')
 
 
 def _fact(title: str, value: object | None) -> dict | None:
@@ -65,17 +84,20 @@ def teams_card_for_event(event: Event) -> dict:
         ),
     ]
 
+    level_style = _level_style(event.level)
+
     body: list[dict] = [
         {
             'type': 'Container',
-            'style': 'attention',
+            'style': _level_container_style(event.level),
             'bleed': True,
             'items': [
                 {
                     'type': 'TextBlock',
-                    'text': f'🚨 {title}',
+                    'text': f'{_level_emoji(event.level)} {title}',
                     'weight': 'Bolder',
                     'size': 'Large',
+                    'color': level_style,
                     'wrap': True,
                 },
                 {
@@ -183,4 +205,4 @@ class MSTeamsWebhookDestination:
     def send(self, event: Event, *, exc_text: str | None = None) -> None:
         safe = event.safe(exception=exc_text)
         payload = teams_card_for_event(safe)
-        send_to_slack(self._webhook_url, payload)
+        send_to_teams(self._webhook_url, payload)
