@@ -58,6 +58,13 @@ export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 export SHUUTEN_TEAMS_WEBHOOK_URL="https://xxxxx.webhook.office.com/..."
 ```
 
+*Email (Amazon SES)*:
+
+```
+export SHUUTEN_SES_FROM="..."
+export SHUUTEN_SES_TO="..."
+```
+
 That's it.
 
 ## Installation
