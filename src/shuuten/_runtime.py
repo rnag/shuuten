@@ -4,10 +4,11 @@ from contextvars import ContextVar, Token
 from typing import Any
 
 from ._models import (
+    NotificationContext,
     Platform,
     RuntimeContext,
     detect_context,
-    from_lambda_context, NotificationContext,
+    from_lambda_context,
 )
 
 _notification_ctx: ContextVar[NotificationContext | None] = ContextVar(

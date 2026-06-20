@@ -7,7 +7,6 @@ import json
 from .._models import Event
 from .._requests import send_to_teams
 
-
 _LEVEL_META = {
     'DEBUG': ('🔎', 'accent', 'emphasis'),
     'INFO': ('ℹ️', 'good', 'good'),
@@ -63,9 +62,9 @@ def teams_card_for_event(event: Event) -> dict:
         ),
     ]
 
-    emoji, text_color, container_style = _LEVEL_META.get(
-        event.level.upper()
-    ) or _LEVEL_META['ERROR']
+    emoji, text_color, container_style = (
+        _LEVEL_META.get(event.level.upper()) or _LEVEL_META['ERROR']
+    )
 
     body: list[dict] = [
         {
@@ -113,7 +112,8 @@ def teams_card_for_event(event: Event) -> dict:
         body.append(
             {
                 'type': 'TextBlock',
-                'text': f'**Details**\n\n```\n{_compact_json(context_for_teams)}\n```',
+                'text': '**Details**\n\n```\n'
+                f'{_compact_json(context_for_teams)}\n```',
                 'wrap': True,
             }
         )

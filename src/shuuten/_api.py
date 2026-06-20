@@ -5,17 +5,25 @@ from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
 from uuid import uuid4
 
-from ._destinations import SESDestination, SlackWebhookDestination, MSTeamsWebhookDestination
+from ._destinations import (
+    MSTeamsWebhookDestination,
+    SESDestination,
+    SlackWebhookDestination,
+)
 from ._integrations import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
     ShuutenNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, Platform, NotificationContext
+from ._models import Config, Event, NotificationContext, Platform
 from ._notifier import Notifier
-from ._runtime import detect_and_set_context, reset_runtime_context, set_notification_context, \
-    reset_notification_context
+from ._runtime import (
+    detect_and_set_context,
+    reset_notification_context,
+    reset_runtime_context,
+    set_notification_context,
+)
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None

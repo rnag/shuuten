@@ -68,9 +68,12 @@ def send_json_webhook(
             if resp.status >= 400:
                 body = r.decode('utf-8', errors='replace')
                 raise RuntimeError(
-                    f'{destination} webhook failed with status {resp.status}: {body}'
+                    f'{destination} webhook failed with '
+                    f'status {resp.status}: {body}'
                 )
             return r
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
-        raise RuntimeError(f'{destination} webhook HTTP error {e.code}: {body}') from e
+        raise RuntimeError(
+            f'{destination} webhook HTTP error {e.code}: {body}'
+        ) from e

@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from .._log import LOG
 from .._models import Event
-from .._runtime import get_runtime_context, get_notification_context
+from .._runtime import get_notification_context, get_runtime_context
 
 _BASE_LOG_KEYS = frozenset(
     {
@@ -114,9 +114,8 @@ class ShuutenNotificationHandler(Handler):
             or record.name
         )
 
-        subject_id = (
-            getattr(record, 'shuuten_subject_id', None)
-            or (notify_ctx.subject_id if notify_ctx else None)
+        subject_id = getattr(record, 'shuuten_subject_id', None) or (
+            notify_ctx.subject_id if notify_ctx else None
         )
 
         # record.getMessage() formats %s args
