@@ -70,8 +70,8 @@ That's it.
 ## Installation
 
 ```bash
-pip install shuuten             # Slack, Teams, local logging
-pip install "shuuten[email]"    # SES email (boto3) outside AWS Lambda
+pip install shuuten             # core package; no dependencies
+pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
 ## Usage patterns
@@ -83,7 +83,7 @@ import shuuten
 
 def handler(event, context):
     shuuten.info('hello')        # not sent
-    shuuten.error('bad input')   # sent to Slack if configured
+    shuuten.error('bad input')   # sent to configured destinations
 ```
 
 ### Explicit logger + notifications
@@ -203,14 +203,14 @@ log.info({'event': 'app_requested', 'app_id': 'A123'})
 
 You can configure Shuuten via `Config` in code **or** environment variables.
 
-| Variable                  | Description                                       | Default   |
-|---------------------------|---------------------------------------------------|-----------|
-| `SHUUTEN_APP`             | Application name (used for grouping/metadata)     | auto      |
-| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.) | auto      |
-| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                | `ERROR`   |
-| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying          | `true`    |
-| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)        | `WARNING` |
-| `SHUUTEN_DEDUPE_WINDOW_S` | Slack dedupe window (seconds); `0` disables       | `30`      |
+| Variable                  | Description                                        | Default   |
+|---------------------------|----------------------------------------------------|-----------|
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)      | auto      |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)  | auto      |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                 | `ERROR`   |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying           | `true`    |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)         | `WARNING` |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables | `30`      |
 
 ### Slack
 
@@ -225,7 +225,7 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 |-----------------------------|-------------------------------|
 | `SHUUTEN_TEAMS_WEBHOOK_URL` | MS Teams Incoming Webhook URL |
 
-See:
+Setup:
 https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
 
 ### Email (SES)
