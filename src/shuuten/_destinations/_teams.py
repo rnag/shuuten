@@ -62,8 +62,9 @@ def teams_card_for_event(event: Event) -> dict:
         ),
     ]
 
-    emoji, text_color, container_style = (
-        _LEVEL_META.get(event.level.upper(), _LEVEL_META['ERROR'])
+    emoji, text_color, container_style = _LEVEL_META.get(
+        (event.level or '').upper(),
+        _LEVEL_META['ERROR'],
     )
 
     body: list[dict] = [

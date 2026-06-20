@@ -13,7 +13,9 @@
 
 <!--intro-start-->
 
-**Stop writing boilerplate alert code.** Shuuten gives your Python automations structured JSON logging and instant Slack (or email) alerts when things go wrong — with zero dependencies and minimal setup.
+**Stop writing boilerplate alert code.** Shuuten gives your Python automations
+structured JSON logging and instant Slack, Microsoft Teams, or email alerts
+when things go wrong — with zero dependencies and minimal setup.
 
 Built for AWS Lambda and ECS, works anywhere Python runs.
 
@@ -96,6 +98,33 @@ def handler(event, context):
         ...
     finally:
         shuuten.reset_runtime_context(token)
+```
+
+### Send to Microsoft Teams
+
+```python
+import logging
+import shuuten
+
+log = shuuten.setup(
+    shuuten.Config(
+        teams_webhook_url='https://...',
+        min_level=logging.ERROR,
+        app='billing-worker',
+        env='prod',
+    ),
+    logger_name=__name__,
+)
+
+
+@shuuten.capture(workflow='daily-sync', action='sync_customers')
+def main():
+    log.info('Starting sync')          # local JSON log only
+    log.error('Bad customer payload')  # sent to Teams
+    1 / 0                             # sent to Teams with stack trace
+
+
+main()
 ```
 
 > The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
@@ -199,7 +228,6 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 
 ## Roadmap
 
-* MS Teams webhook destination
 * Structlog processor integration
 * PagerDuty / JSM Alerting destination
 * Context manager for exception capture
