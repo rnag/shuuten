@@ -174,6 +174,12 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 | `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
 | `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
 
+### Microsoft Teams
+
+| Variable                    | Description                   |
+|-----------------------------|-------------------------------|
+| `SHUUTEN_TEAMS_WEBHOOK_URL` | MS Teams Incoming Webhook URL |
+
 ### Email (SES)
 
 | Variable               | Description                    |
@@ -185,6 +191,7 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 
 ## Supported destinations
 
+* **MS Teams** (Incoming Webhooks)
 * **Slack** (Incoming Webhooks)
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.

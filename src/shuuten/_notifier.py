@@ -98,7 +98,7 @@ class Notifier:
                 extra={
                     'shuuten': payload,
                     'shuuten_internal': True,  # clear signal for humans / tools
-                    'shuuten_skip_slack': True,
+                    'shuuten_skip_notify': True,
                 },
             )
 

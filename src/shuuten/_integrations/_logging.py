@@ -28,13 +28,13 @@ _BASE_LOG_KEYS = frozenset(
 )
 
 
-class DropInternalSlackNotifyFilter(logging.Filter):
+class DropInternalNotifyFilter(logging.Filter):
     """
     Filter that drops records with `shuuten_no_notify`
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        return not getattr(record, 'shuuten_skip_slack', False)
+        return not getattr(record, 'shuuten_skip_notify', False)
 
 
 class ShuutenContextFilter(logging.Filter):
@@ -82,7 +82,7 @@ class ShuutenNotificationHandler(Handler):
         self._last_sent: dict[str, float] = {}
 
         # filter to drop records with `shuuten_no_notify`
-        self.addFilter(DropInternalSlackNotifyFilter())
+        self.addFilter(DropInternalNotifyFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
         if self._dedupe_window_s <= 0:
