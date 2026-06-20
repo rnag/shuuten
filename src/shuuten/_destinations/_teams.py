@@ -8,34 +8,13 @@ from .._models import Event
 from .._requests import send_to_teams
 
 
-def _level_style(level: str) -> str:
-    return {
-        'DEBUG': 'accent',
-        'INFO': 'good',
-        'WARNING': 'warning',
-        'ERROR': 'attention',
-        'CRITICAL': 'attention',
-    }.get((level or '').upper(), 'attention')
-
-
-def _level_emoji(level: str) -> str:
-    return {
-        'DEBUG': '🔎',
-        'INFO': 'ℹ️',
-        'WARNING': '⚠️',
-        'ERROR': '🚨',
-        'CRITICAL': '🔥',
-    }.get((level or '').upper(), '🚨')
-
-
-def _level_container_style(level: str) -> str:
-    return {
-        'DEBUG': 'emphasis',
-        'INFO': 'good',
-        'WARNING': 'warning',
-        'ERROR': 'attention',
-        'CRITICAL': 'attention',
-    }.get((level or '').upper(), 'attention')
+_LEVEL_META = {
+    'DEBUG': ('🔎', 'accent', 'emphasis'),
+    'INFO': ('ℹ️', 'good', 'good'),
+    'WARNING': ('⚠️', 'warning', 'warning'),
+    'ERROR': ('🚨', 'attention', 'attention'),
+    'CRITICAL': ('🔥', 'attention', 'attention'),
+}
 
 
 def _fact(title: str, value: object | None) -> dict | None:
@@ -84,20 +63,22 @@ def teams_card_for_event(event: Event) -> dict:
         ),
     ]
 
-    level_style = _level_style(event.level)
+    emoji, text_color, container_style = _LEVEL_META.get(
+        event.level.upper()
+    ) or _LEVEL_META['ERROR']
 
     body: list[dict] = [
         {
             'type': 'Container',
-            'style': _level_container_style(event.level),
+            'style': container_style,
             'bleed': True,
             'items': [
                 {
                     'type': 'TextBlock',
-                    'text': f'{_level_emoji(event.level)} {title}',
+                    'text': f'{emoji} {title}',
                     'weight': 'Bolder',
                     'size': 'Large',
-                    'color': level_style,
+                    'color': text_color,
                     'wrap': True,
                 },
                 {
