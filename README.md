@@ -70,7 +70,7 @@ That's it.
 ## Installation
 
 ```bash
-pip install shuuten             # no dependencies (Slack, local logging)
+pip install shuuten             # Slack, Teams, local logging
 pip install "shuuten[email]"    # SES email (boto3) outside AWS Lambda
 ```
 
@@ -86,7 +86,7 @@ def handler(event, context):
     shuuten.error('bad input')   # sent to Slack if configured
 ```
 
-### Explicit logger + email notifications
+### Explicit logger + notifications
 
 > Requires SES env vars (`SHUUTEN_SES_FROM`, `SHUUTEN_SES_TO`). Email is sent via AWS SES if configured.
 
@@ -99,7 +99,7 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical('Something went wrong')  # sent to Slack + Email (if configured)
+    log.critical('Something went wrong')  # sent to configured destinations
 ```
 
 ### Manual context control (advanced)
@@ -198,6 +198,7 @@ log = shuuten.get_logger(__name__)
 log.info({'event': 'app_requested', 'app_id': 'A123'})
 ```
 
+
 ## Configuration
 
 You can configure Shuuten via `Config` in code **or** environment variables.
@@ -223,6 +224,9 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 | Variable                    | Description                   |
 |-----------------------------|-------------------------------|
 | `SHUUTEN_TEAMS_WEBHOOK_URL` | MS Teams Incoming Webhook URL |
+
+See:
+https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
 
 ### Email (SES)
 
