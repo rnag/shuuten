@@ -40,14 +40,22 @@ import shuuten
 @shuuten.capture
 def lambda_handler(event, context):
     shuuten.debug('debug info')      # logged locally, not sent
-    shuuten.error('domain error')    # → Slack
-    1 / 0                            # → Slack with full stack trace
+    shuuten.error('domain error')    # → configured destinations
+    1 / 0                            # → alert with full stack trace
 ```
 
-One environment variable (see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
+Configure at least one destination:
+
+*Slack* (see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
 
 ```bash
 export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+```
+
+*Teams* (see [MS Teams webhook setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
+
+```bash
+export SHUUTEN_TEAMS_WEBHOOK_URL="https://xxxxx.webhook.office.com/..."
 ```
 
 That's it.
