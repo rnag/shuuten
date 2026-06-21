@@ -14,23 +14,19 @@
 <!--intro-start-->
 
 **Stop writing boilerplate alert code.** Shuuten gives your Python automations
-structured JSON logging and instant Slack, Microsoft Teams, or email alerts
-when things go wrong — with zero dependencies and minimal setup.
+structured JSON logging and instant Slack, Microsoft Teams, or email alerts —
+with zero dependencies and minimal setup.
 
 Built for AWS Lambda and ECS, works anywhere Python runs.
 
 *終点 (Shūten) — "final stop" in Japanese. The last line of defense before a silent failure.*
 
-📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
-
 ## Why Shuuten?
 
 * **Zero dependencies** — no SDKs, agents, or background workers
-* **3 lines to set up** — decorator + one env var and you're done
 * **Structured JSON logs** — CloudWatch-friendly out of the box
 * **Built for failure paths** — only `ERROR+` alerts are sent by default, no noise
 * **Designed for AWS** — Lambda, ECS tasks, and containers work out of the box
-* **Logging-native** — uses familiar `logging` semantics, no new concepts
 
 ## Quick start (AWS Lambda)
 
@@ -56,6 +52,8 @@ export SHUUTEN_SES_TO="..."
 ```
 
 That's it.
+
+📖 [Documentation](https://shuuten.ritviknag.com) · ⭐ [Star on GitHub](https://github.com/rnag/shuuten)
 
 ## Installation
 
