@@ -39,7 +39,6 @@ import shuuten
 
 @shuuten.capture
 def lambda_handler(event, context):
-    shuuten.debug('debug info')      # logged locally, not sent
     shuuten.error('domain error')    # → configured destinations
     1 / 0                            # → alert with full stack trace
 ```
@@ -68,12 +67,15 @@ pip install "shuuten[email]"    # + SES email support (boto3)
 
 ### Structured logging (logging-style)
 
+> **Note:**
+> By default, only `ERROR` and above are sent to configured destinations.
+> Lower-severity logs (`DEBUG`, `INFO`, `WARNING`) are emitted locally but are not sent as notifications unless `min_level` is changed.
+
 ```python
 import shuuten
 
 def handler(event, context):
     shuuten.info('hello')        # not sent
-    shuuten.error('bad input')   # sent to configured destinations
 ```
 
 ### Explicit logger + notifications
@@ -203,8 +205,8 @@ See [MS Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/pl
 
 ## Supported destinations
 
-* **MS Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
 * **Slack** ([Incoming Webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
+* **MS Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
   See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
