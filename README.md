@@ -105,33 +105,6 @@ def handler(event, context):
         shuuten.reset_runtime_context(token)
 ```
 
-### Send to Microsoft Teams
-
-```python
-import logging
-import shuuten
-
-log = shuuten.setup(
-    shuuten.Config(
-        teams_webhook_url='https://...',
-        min_level=logging.ERROR,
-        app='billing-worker',
-        env='prod',
-    ),
-    logger_name=__name__,
-)
-
-
-@shuuten.capture(workflow='daily-sync', action='sync_customers')
-def main():
-    log.info('Starting sync')          # local JSON log only
-    log.error('Bad customer payload')  # sent to Teams
-    1 / 0                             # sent to Teams with stack trace
-
-
-main()
-```
-
 > The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
 
 ### Structured logging with `extra`
