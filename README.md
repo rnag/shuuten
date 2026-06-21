@@ -43,24 +43,14 @@ def lambda_handler(event, context):
     shuuten.error('domain error')    # → configured destinations
     1 / 0                            # → alert with full stack trace
 ```
-
-Configure at least one destination:
-
-*Slack* (see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
+Configure one destination:
 
 ```bash
+# Slack
 export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
-```
-
-*Teams* (see [MS Teams webhook setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
-
-```bash
+# OR Microsoft Teams
 export SHUUTEN_TEAMS_WEBHOOK_URL="https://xxxxx.webhook.office.com/..."
-```
-
-*Email (Amazon SES)*:
-
-```
+# OR Email (Amazon SES)
 export SHUUTEN_SES_FROM="..."
 export SHUUTEN_SES_TO="..."
 ```
@@ -219,6 +209,8 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 | `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
 | `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
 
+See [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)
+
 ### Microsoft Teams
 
 | Variable                    | Description                   |
@@ -239,8 +231,8 @@ https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connector
 
 ## Supported destinations
 
-* **MS Teams** (Incoming Webhooks)
-* **Slack** (Incoming Webhooks)
+* **MS Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
+* **Slack** ([Incoming Webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
   See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
