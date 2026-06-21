@@ -42,6 +42,7 @@ def lambda_handler(event, context):
     shuuten.error('domain error')    # → configured destinations
     1 / 0                            # → alert with full stack trace
 ```
+
 Configure one destination:
 
 ```bash
@@ -59,7 +60,7 @@ That's it.
 ## Installation
 
 ```bash
-pip install shuuten             # core package; no dependencies
+pip install shuuten             # core package (Slack, Teams, logging)
 pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
@@ -76,6 +77,7 @@ import shuuten
 
 def handler(event, context):
     shuuten.info('hello')        # not sent
+    shuuten.error('bad input')   # sent to configured destinations
 ```
 
 ### Explicit logger + notifications
@@ -188,11 +190,11 @@ See [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-usin
 
 ### Microsoft Teams
 
-| Variable                    | Description                   |
-|-----------------------------|-------------------------------|
-| `SHUUTEN_TEAMS_WEBHOOK_URL` | MS Teams Incoming Webhook URL |
+| Variable                    | Description                          |
+|-----------------------------|--------------------------------------|
+| `SHUUTEN_TEAMS_WEBHOOK_URL` | Microsoft Teams Incoming Webhook URL |
 
-See [MS Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
+See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
 
 ### Email (SES)
 
@@ -206,7 +208,7 @@ See [MS Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/pl
 ## Supported destinations
 
 * **Slack** ([Incoming Webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
-* **MS Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
+* **Microsoft Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
   See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
