@@ -13,7 +13,9 @@
 
 <!--intro-start-->
 
-**Stop writing boilerplate alert code.** Shuuten gives your Python automations structured JSON logging and instant Slack (or email) alerts when things go wrong — with zero dependencies and minimal setup.
+**Stop writing boilerplate alert code.** Shuuten gives your Python automations
+structured JSON logging and instant Slack, Microsoft Teams, or email alerts
+when things go wrong — with zero dependencies and minimal setup.
 
 Built for AWS Lambda and ECS, works anywhere Python runs.
 
@@ -37,15 +39,20 @@ import shuuten
 
 @shuuten.capture
 def lambda_handler(event, context):
-    shuuten.debug('debug info')      # logged locally, not sent
-    shuuten.error('domain error')    # → Slack
-    1 / 0                            # → Slack with full stack trace
+    shuuten.error('domain error')    # → sends alert
+    1 / 0                            # → alert with full stack trace
 ```
 
-One environment variable (see [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)):
+Configure one destination:
 
 ```bash
+# Slack
 export SHUUTEN_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+# OR Microsoft Teams
+export SHUUTEN_TEAMS_WEBHOOK_URL="https://xxxxx.webhook.office.com/..."
+# OR Email (Amazon SES)
+export SHUUTEN_SES_FROM="..."
+export SHUUTEN_SES_TO="..."
 ```
 
 That's it.
@@ -53,23 +60,27 @@ That's it.
 ## Installation
 
 ```bash
-pip install shuuten             # no dependencies (Slack, local logging)
-pip install "shuuten[email]"    # SES email (boto3) outside AWS Lambda
+pip install shuuten             # core package (logging, Slack, Teams)
+pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
 ## Usage patterns
 
 ### Structured logging (logging-style)
 
+> **Note:**
+> By default, only `ERROR` and above are sent to configured destinations.
+> Lower-severity logs (`DEBUG`, `INFO`, `WARNING`) are emitted locally but are not sent as notifications unless `min_level` is changed.
+
 ```python
 import shuuten
 
 def handler(event, context):
     shuuten.info('hello')        # not sent
-    shuuten.error('bad input')   # sent to Slack if configured
+    shuuten.error('bad input')   # sent to configured destinations
 ```
 
-### Explicit logger + email notifications
+### Explicit logger + notifications
 
 > Requires SES env vars (`SHUUTEN_SES_FROM`, `SHUUTEN_SES_TO`). Email is sent via AWS SES if configured.
 
@@ -82,7 +93,7 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical('Something went wrong')  # sent to Slack + Email (if configured)
+    log.critical('Something went wrong')  # sent to configured destinations
 ```
 
 ### Manual context control (advanced)
@@ -154,18 +165,19 @@ log = shuuten.get_logger(__name__)
 log.info({'event': 'app_requested', 'app_id': 'A123'})
 ```
 
+
 ## Configuration
 
 You can configure Shuuten via `Config` in code **or** environment variables.
 
-| Variable                  | Description                                       | Default   |
-|---------------------------|---------------------------------------------------|-----------|
-| `SHUUTEN_APP`             | Application name (used for grouping/metadata)     | auto      |
-| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.) | auto      |
-| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                | `ERROR`   |
-| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying          | `true`    |
-| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)        | `WARNING` |
-| `SHUUTEN_DEDUPE_WINDOW_S` | Slack dedupe window (seconds); `0` disables       | `30`      |
+| Variable                  | Description                                        | Default   |
+|---------------------------|----------------------------------------------------|-----------|
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)      | auto      |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)  | auto      |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                 | `ERROR`   |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying           | `true`    |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)         | `WARNING` |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables | `30`      |
 
 ### Slack
 
@@ -173,6 +185,16 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 |-----------------------------|----------------------------|
 | `SHUUTEN_SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL |
 | `SHUUTEN_SLACK_FORMAT`      | `blocks` or `plain`        |
+
+See [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/)
+
+### Microsoft Teams
+
+| Variable                    | Description                          |
+|-----------------------------|--------------------------------------|
+| `SHUUTEN_TEAMS_WEBHOOK_URL` | Microsoft Teams Incoming Webhook URL |
+
+See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
 
 ### Email (SES)
 
@@ -185,14 +207,14 @@ You can configure Shuuten via `Config` in code **or** environment variables.
 
 ## Supported destinations
 
-* **Slack** (Incoming Webhooks)
+* **Slack** ([Incoming Webhooks](https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/))
+* **Microsoft Teams** ([Incoming Webhooks](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook))
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
   See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
 
 ## Roadmap
 
-* MS Teams webhook destination
 * Structlog processor integration
 * PagerDuty / JSM Alerting destination
 * Context manager for exception capture

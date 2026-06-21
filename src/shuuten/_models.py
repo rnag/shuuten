@@ -45,12 +45,17 @@ class Config:
     env: str | None = None
 
     emit_local_log: bool = True
+
     # Quiet level for 3rd party libraries (such as botocore);
     # defaults to `WARNING` if not set.
     quiet_level: QuietLevel = UNSET
+
     # Slack webhook
     slack_webhook_url: str | None = None
     slack_format: SlackFormat = SlackFormat.BLOCKS
+
+    # MS Teams webhook
+    teams_webhook_url: str | None = None
 
     # Minimum log level for messages sent to Slack
     min_level: int = ERROR
@@ -64,6 +69,7 @@ class Config:
     ses_to: list[str] = field(default_factory=list)
     ses_reply_to: list[str] = field(default_factory=list)
     ses_region: str | None = None
+
     dedupe_window_s: float = 30.0
 
     def with_env_defaults(self) -> Config:
@@ -86,6 +92,7 @@ class Config:
             'app',
             'env',
             'slack_webhook_url',
+            'teams_webhook_url',
             'ses_from',
             'ses_region',
         ):
@@ -136,6 +143,7 @@ class Config:
                 enum=SlackFormat,
                 default=SlackFormat.BLOCKS,
             ),
+            teams_webhook_url=getenv('SHUUTEN_TEAMS_WEBHOOK_URL'),
             ses_from=getenv('SHUUTEN_SES_FROM'),
             ses_to=split_emails(getenv('SHUUTEN_SES_TO')),
             ses_reply_to=split_emails(getenv('SHUUTEN_SES_REPLY_TO')),
@@ -200,6 +208,14 @@ class Event:
         e.level = e.level.upper()
 
         return e
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationContext:
+    workflow: str | None = None
+    action: str | None = None
+    subject_id: str | None = None
+    run_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

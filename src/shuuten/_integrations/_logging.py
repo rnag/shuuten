@@ -5,10 +5,11 @@ from hashlib import sha1
 from json import dumps
 from logging import ERROR, Formatter, Handler, LogRecord
 from time import time
+from uuid import uuid4
 
 from .._log import LOG
 from .._models import Event
-from .._runtime import get_runtime_context
+from .._runtime import get_notification_context, get_runtime_context
 
 _BASE_LOG_KEYS = frozenset(
     {
@@ -27,13 +28,13 @@ _BASE_LOG_KEYS = frozenset(
 )
 
 
-class DropInternalSlackNotifyFilter(logging.Filter):
+class DropInternalNotifyFilter(logging.Filter):
     """
     Filter that drops records with `shuuten_no_notify`
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        return not getattr(record, 'shuuten_skip_slack', False)
+        return not getattr(record, 'shuuten_skip_notify', False)
 
 
 class ShuutenContextFilter(logging.Filter):
@@ -43,7 +44,7 @@ class ShuutenContextFilter(logging.Filter):
         return True
 
 
-class SlackNotificationHandler(Handler):
+class ShuutenNotificationHandler(Handler):
     """
     Forwards ERROR+ log records to the global Shuuten notifier (or
     a passed-in notifier).
@@ -81,7 +82,7 @@ class SlackNotificationHandler(Handler):
         self._last_sent: dict[str, float] = {}
 
         # filter to drop records with `shuuten_no_notify`
-        self.addFilter(DropInternalSlackNotifyFilter())
+        self.addFilter(DropInternalNotifyFilter())
 
     def _should_send(self, record: LogRecord, msg: str) -> bool:
         if self._dedupe_window_s <= 0:
@@ -99,6 +100,24 @@ class SlackNotificationHandler(Handler):
         return True
 
     def emit(self, record: LogRecord) -> None:
+        notify_ctx = get_notification_context()
+
+        workflow = (
+            getattr(record, 'shuuten_workflow', None)
+            or (notify_ctx.workflow if notify_ctx else None)
+            or self._workflow
+        )
+
+        action = (
+            getattr(record, 'shuuten_action', None)
+            or (notify_ctx.action if notify_ctx else None)
+            or record.name
+        )
+
+        subject_id = getattr(record, 'shuuten_subject_id', None) or (
+            notify_ctx.subject_id if notify_ctx else None
+        )
+
         # record.getMessage() formats %s args
         msg = record.getMessage()
         if not self._should_send(record, msg):
@@ -131,14 +150,15 @@ class SlackNotificationHandler(Handler):
             )
 
             level = record.levelname.lower()
-            action = record.name
 
             event = Event(
                 level=level,
                 summary=self._default_summary,
                 message=msg,
-                workflow=self._workflow,
+                workflow=workflow,
                 action=action,
+                subject_id=subject_id,
+                run_id=(notify_ctx.run_id if notify_ctx else str(uuid4())),
                 env=None,
                 context=context,
             )

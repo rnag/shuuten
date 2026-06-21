@@ -3,17 +3,27 @@ from __future__ import annotations
 from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
+from uuid import uuid4
 
-from ._destinations import SESDestination, SlackWebhookDestination
+from ._destinations import (
+    MSTeamsWebhookDestination,
+    SESDestination,
+    SlackWebhookDestination,
+)
 from ._integrations import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
-    SlackNotificationHandler,
+    ShuutenNotificationHandler,
 )
 from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, Platform
+from ._models import Config, Event, NotificationContext, Platform
 from ._notifier import Notifier
-from ._runtime import detect_and_set_context, reset_runtime_context
+from ._runtime import (
+    detect_and_set_context,
+    reset_notification_context,
+    reset_runtime_context,
+    set_notification_context,
+)
 
 _NOTIFIER: Notifier | None = None
 _HANDLERS: list[Handler] | None = None
@@ -102,8 +112,9 @@ def init(
 
     destinations = []
     slack_url = config.slack_webhook_url
+    teams_url = config.teams_webhook_url
 
-    # DESTINATIONS
+    # [DESTINATIONS]
     # Slack
     if slack_url is not None:
         LOG.debug('Slack: Found webhook %s', slack_url)
@@ -112,6 +123,13 @@ def init(
             slack_format=config.slack_format,
         )
         destinations.append(slack_destination)
+    # MS Teams
+    if teams_url is not None:
+        LOG.debug('MS Teams: Found webhook %s', teams_url)
+        teams_destination = MSTeamsWebhookDestination(
+            webhook_url=teams_url,
+        )
+        destinations.append(teams_destination)
     # Email
     if ses_from and ses_to:
         LOG.debug('SES: Found FROM (%s) and TO (%s)', ses_from, ses_to)
@@ -128,13 +146,14 @@ def init(
         destinations=destinations,
     )
 
-    if slack_url is not None:
-        slack_handler = SlackNotificationHandler(
+    if destinations:
+        notification_handler = ShuutenNotificationHandler(
             _NOTIFIER,
             min_level=config.min_level,
             dedupe_window_s=config.dedupe_window_s,
         )
-        _HANDLERS.append(slack_handler)
+        # noinspection PyTypeChecker
+        _HANDLERS.append(notification_handler)
 
 
 def get_logger(name: str | None = None, configure_root: bool = False):
@@ -183,6 +202,8 @@ def capture(
     Captures exceptions, enriches them with runtime context, and
     notifies configured destinations. Exceptions are re-raised
     by default.
+
+    Summary used only if the wrapped function raises.
     """
     init(config)  # Initialize config (or from env if config=None) if needed
     notifier = notifier or _NOTIFIER
@@ -192,8 +213,16 @@ def capture(
         def wrapper(*args, **kwargs):
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
+            run_id = str(uuid4())
 
-            token = detect_and_set_context(ctx_obj, platform)
+            rt_token = detect_and_set_context(ctx_obj, platform)
+            notify_token = set_notification_context(
+                NotificationContext(
+                    workflow=workflow,
+                    action=action or fn.__qualname__,
+                    run_id=run_id,
+                )
+            )
 
             try:
                 return fn(*args, **kwargs)
@@ -212,6 +241,7 @@ def capture(
                     action=action or fn.__qualname__,
                     subject_id=subject_id,
                     context=context,
+                    run_id=run_id,
                 )
 
                 if notifier is not None:
@@ -223,7 +253,8 @@ def capture(
                 return None
 
             finally:
-                reset_runtime_context(token)
+                reset_notification_context(notify_token)
+                reset_runtime_context(rt_token)
 
         return wrapper
 

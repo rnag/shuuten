@@ -1,5 +1,25 @@
 # History
 
+## 0.4.0 (2026-06-21)
+
+### Added
+
+* Microsoft Teams destination via Incoming Webhooks using Adaptive Cards.
+* `SHUUTEN_TEAMS_WEBHOOK_URL` configuration option.
+* Rich Microsoft Teams notifications with structured event details, exception traces, AWS metadata, and deep links to CloudWatch and source code.
+* Notification context propagation for `workflow`, `action`, and `run_id`, allowing logs emitted within `@capture()` to be correlated with the resulting failure notification.
+
+### Changed
+
+* Renamed `SlackNotificationHandler` to `ShuutenNotificationHandler` (backwards-compatible alias retained).
+* Notification deduplication now applies across all configured destinations rather than being documented as Slack-specific.
+* README refreshed to document Microsoft Teams support and destination-agnostic alerting.
+
+### Fixed
+
+* Logs emitted inside a `@capture()` scope now inherit the active workflow and action metadata.
+* Improved consistency of notification metadata across Slack, Microsoft Teams, and SES destinations.
+
 ## 0.3.1 (2026-06-18)
 
 ### Changed
