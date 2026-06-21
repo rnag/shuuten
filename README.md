@@ -39,7 +39,7 @@ import shuuten
 
 @shuuten.capture
 def lambda_handler(event, context):
-    shuuten.error('domain error')    # → configured destinations
+    shuuten.error('domain error')    # → sends alert
     1 / 0                            # → alert with full stack trace
 ```
 
@@ -60,7 +60,7 @@ That's it.
 ## Installation
 
 ```bash
-pip install shuuten             # core package (Slack, Teams, logging)
+pip install shuuten             # core package (logging, Slack, Teams)
 pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
