@@ -217,8 +217,7 @@ See [Slack webhook setup](https://docs.slack.dev/messaging/sending-messages-usin
 |-----------------------------|-------------------------------|
 | `SHUUTEN_TEAMS_WEBHOOK_URL` | MS Teams Incoming Webhook URL |
 
-Setup:
-https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+See [MS Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook)
 
 ### Email (SES)
 
