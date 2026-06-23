@@ -1,5 +1,5 @@
 # noinspection PyProtectedMember
-from logging import WARNING, getLogger, _nameToLevel, ERROR
+from logging import ERROR, WARNING, _nameToLevel, getLogger
 
 LOG = getLogger('shuuten')
 

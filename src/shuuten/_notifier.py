@@ -56,7 +56,8 @@ class Notifier:
 
     def notify(
         self,
-        event: Event, *,
+        event: Event,
+        *,
         exc: BaseException | None = None,
         emit_local_log: bool | None = None,
     ) -> None:

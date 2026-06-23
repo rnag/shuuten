@@ -5,6 +5,15 @@ from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
 from uuid import uuid4
 
+from ._log import LOG, quiet_third_party_logs
+from ._models import Config, Event, NotificationContext, Platform
+from ._notifier import Notifier
+from ._runtime import (
+    detect_and_set_context,
+    reset_notification_context,
+    reset_runtime_context,
+    set_notification_context,
+)
 from .destinations import (
     MSTeamsWebhookDestination,
     SESDestination,
@@ -14,15 +23,6 @@ from .integrations import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
     ShuutenNotificationHandler,
-)
-from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, NotificationContext, Platform
-from ._notifier import Notifier
-from ._runtime import (
-    detect_and_set_context,
-    reset_notification_context,
-    reset_runtime_context,
-    set_notification_context,
 )
 
 _NOTIFIER: Notifier | None = None

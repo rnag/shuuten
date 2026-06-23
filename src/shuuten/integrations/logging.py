@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from hashlib import sha1
 from json import dumps
-from logging import ERROR, Formatter, Handler, LogRecord
+from logging import Formatter, Handler, LogRecord
 from time import time
 from uuid import uuid4
 
@@ -70,12 +70,15 @@ class ShuutenNotificationHandler(Handler):
     ):
         if notifier is None:
             from .._api import _get_notifier
+
             notifier = _get_notifier()
         self._notifier = notifier
 
         if min_level is None:
             min_level = getattr(notifier.config, 'min_level', logging.ERROR)
-        super().__init__(level=level_to_int(min_level))  # logging will filter by level for us
+        super().__init__(
+            level=level_to_int(min_level)
+        )  # logging will filter by level for us
 
         self._workflow = workflow
         self._default_summary = default_summary
