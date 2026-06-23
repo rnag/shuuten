@@ -7,7 +7,7 @@ from logging import ERROR, Formatter, Handler, LogRecord
 from time import time
 from uuid import uuid4
 
-from .._log import LOG
+from .._log import LOG, level_to_int
 from .._models import Event
 from .._runtime import get_notification_context, get_runtime_context
 
@@ -61,19 +61,22 @@ class ShuutenNotificationHandler(Handler):
         self,
         notifier,  # Notifier
         *,
-        min_level: str | int = ERROR,
+        min_level: str | int | None = None,
         workflow='logs',
         default_summary: str = 'Log forwarded',
         include_stack: bool = True,
         context_getter=None,  # fn(record) -> dict
         dedupe_window_s: float = 30.0,
     ):
-        if isinstance(min_level, str):
-            # noinspection PyUnresolvedReferences,PyProtectedMember
-            min_level = logging._nameToLevel.get(min_level.upper(), ERROR)
-
-        super().__init__(level=min_level)  # logging will filter by level for us
+        if notifier is None:
+            from .._api import _get_notifier
+            notifier = _get_notifier()
         self._notifier = notifier
+
+        if min_level is None:
+            min_level = getattr(notifier.config, 'min_level', logging.ERROR)
+        super().__init__(level=level_to_int(min_level))  # logging will filter by level for us
+
         self._workflow = workflow
         self._default_summary = default_summary
         self._include_stack = include_stack

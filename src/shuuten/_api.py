@@ -5,12 +5,12 @@ from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from typing import cast
 from uuid import uuid4
 
-from ._destinations import (
+from .destinations import (
     MSTeamsWebhookDestination,
     SESDestination,
     SlackWebhookDestination,
 )
-from ._integrations import (
+from .integrations import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
     ShuutenNotificationHandler,

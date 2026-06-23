@@ -36,7 +36,7 @@ __all__ = [
 from logging import Logger, NullHandler
 
 from ._api import capture, get_logger, init, setup, wrap
-from ._integrations import ShuutenJSONFormatter
+from .integrations import ShuutenJSONFormatter
 from ._log import LOG
 from ._models import Config
 from ._runtime import detect_and_set_context, reset_runtime_context

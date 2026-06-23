@@ -81,6 +81,7 @@ dev = [
     "ipdb",  # debugging
 ]
 email = ["boto3"]
+structlog = ["structlog"]
 # slack = ["slack_sdk"]  # only if I decide to support Slack Web API; webhooks don't need this
 
 [project.urls]
