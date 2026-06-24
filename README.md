@@ -163,6 +163,49 @@ log = shuuten.get_logger(__name__)
 log.info({'event': 'app_requested', 'app_id': 'A123'})
 ```
 
+## Integrations
+
+### structlog
+
+[structlog]: https://www.structlog.org/en/stable/
+
+Use Shuuten as a [structlog] processor. Keep `structlog` for logging
+and rendering; Shuuten forwards alert-worthy events to configured
+destinations.
+
+Setup:
+* Install [structlog] via `pip install shuuten[structlog]`
+* Set up 1+ [Destination](#supported-destinations)
+
+Then, configure processors for [structlog]:
+
+```python
+import logging
+
+import structlog
+import shuuten
+from shuuten.integrations.structlog import configure_structlog
+
+shuuten.init(
+    shuuten.Config(
+        min_level=logging.INFO,
+        slack_webhook_url="https://hooks.slack.com/services/...",
+    )
+)
+
+configure_structlog()
+
+log = structlog.get_logger(__name__)
+
+log.debug("logged locally")  # not sent to destinations
+log.info("sent because min_level=INFO")
+log.error("failed", order_id=123)
+```
+
+That's it. Shuuten will forward events at or above `min_level`
+to configured destinations while preserving normal structlog output.
+
+> `min_level` controls what Shuuten sends to destinations. It does not filter structlog console output.
 
 ## Configuration
 
@@ -210,54 +253,6 @@ See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftt
 * **Email** (AWS SES)
   > Note: When running in AWS (e.g. Lambda or ECS), the execution role must be allowed to send email via SES.
   See [AWS docs](https://docs.aws.amazon.com/pinpoint/latest/developerguide/permissions-ses.html).
-
-## Integrations
-
-### structlog
-
-[structlog]: https://www.structlog.org/en/stable/
-
-Shuuten can be used as a structlog processor. You keep using structlog as your logger and renderer; Shuuten only forwards alert-worthy events to configured destinations.
-
-Setup:
-* Install [structlog] via `pip install shuuten[structlog]`
-* Set up 1+ [Destination](#supported-destinations)
-
-Then, configure processors for [structlog]:
-
-```python
-import logging
-
-import structlog
-import shuuten
-from shuuten.integrations.structlog import configure_structlog
-
-shuuten.init(
-    shuuten.Config(
-        min_level=logging.INFO,
-        slack_webhook_url="https://hooks.slack.com/services/...",
-    )
-)
-
-configure_structlog()
-
-log = structlog.get_logger(__name__)
-
-log.debug("logged locally")  # not sent to destinations
-log.info("sent because min_level=INFO")
-log.error("failed", order_id=123)
-```
-
-> `min_level` controls what Shuuten sends to destinations. It does not filter structlog console output.
-
-That's it! Check the destinations for logs (INFO+ in above example)
-
-Example console output:
-```
-{"event": "should not be sent", "level": "debug", "module": "send-slack", "lineno": 18, "filename": "send-slack.py", "func_name": "<module>"}
-{"event": "will be sent", "level": "info", "module": "send-slack", "lineno": 19, "filename": "send-slack.py", "func_name": "<module>"}
-{"order_id": 123, "event": "failed", "level": "error", "module": "send-slack", "lineno": 20, "filename": "send-slack.py", "func_name": "<module>"}
-```
 
 ## Roadmap
 
