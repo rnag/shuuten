@@ -173,9 +173,9 @@ Use Shuuten as a [structlog] processor. Keep `structlog` for logging
 and rendering; Shuuten forwards alert-worthy events to configured
 destinations.
 
-Setup:
-* Install [structlog] via `pip install shuuten[structlog]`
-* Set up 1+ [Destination](#supported-destinations)
+Requirements:
+* Install [structlog] (`pip install shuuten[structlog]`)
+* Configure at least one [destination](#supported-destinations)
 
 Then, configure processors for [structlog]:
 
