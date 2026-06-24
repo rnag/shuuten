@@ -3,7 +3,7 @@ from __future__ import annotations
 from hashlib import sha1
 from logging import ERROR
 from time import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Any
 from uuid import uuid4
 
 from .._log import LOG, level_to_int
@@ -43,9 +43,73 @@ _RESERVED_EVENT_KEYS = (
 )
 
 
-def shuuten_processors(*, callsite: bool = True,
-                       add_level: bool = True,
-                       processor: ShuutenProcessor | None = None):
+def configure_structlog(
+    *,
+    callsite: bool = True,
+    add_level: bool = True,
+    renderer=None,
+    **processor_kwargs,
+) -> None:
+    """
+    Configure structlog with recommended Shuuten integration defaults.
+
+    This helper installs a ``ShuutenProcessor`` along with optional
+    call-site metadata and log level enrichment. A JSON renderer is
+    added by default.
+
+    Example::
+
+        import structlog
+        import shuuten
+
+        shuuten.init(
+            shuuten.Config(min_level=logging.INFO)
+        )
+
+        configure_structlog()
+
+        log = structlog.get_logger(__name__)
+        log.error("failed", order_id=123)
+
+    Notes:
+        - Shuuten's ``min_level`` controls which events generate
+          notifications.
+        - structlog's own filtering remains configurable separately.
+        - Existing structlog users may prefer ``shuuten_processors()``
+          for full control over their processor pipeline.
+    """
+    import structlog
+
+    if renderer is None:
+        renderer = structlog.processors.JSONRenderer()
+
+    structlog.configure(
+        processors=[
+            *shuuten_processors(
+                callsite=callsite,
+                add_level=add_level,
+                processor=ShuutenProcessor(**processor_kwargs),
+            ),
+            renderer,
+        ],
+    )
+
+
+def shuuten_processors(
+    *,
+    callsite: bool = True,
+    add_level: bool = True,
+    processor: ShuutenProcessor | None = None,
+) -> list[Callable[..., Any]]:
+    """
+    Return recommended structlog processors for Shuuten.
+
+    The returned processors add optional log level and call-site metadata,
+    then forward ERROR+ events to Shuuten via ``ShuutenProcessor``.
+
+    A renderer, such as ``structlog.processors.JSONRenderer()``, should still
+    be added by the caller as the final processor.
+    """
     try:
         import structlog
     except ImportError as e:
@@ -76,7 +140,13 @@ def shuuten_processors(*, callsite: bool = True,
 
 
 class ShuutenProcessor:
+    """
+    structlog processor that forwards alert-worthy events to Shuuten.
 
+    The processor preserves normal structlog behavior by returning the original
+    event dictionary. It only sends notifications for events at or above
+    ``min_level`` and does not require Shuuten to own the user's logger.
+    """
     def __init__(
         self,
         notifier=None,
