@@ -3,7 +3,7 @@ from __future__ import annotations
 from hashlib import sha1
 from logging import ERROR
 from time import time
-from typing import TYPE_CHECKING, Callable, Any
+from typing import TYPE_CHECKING, Any, Callable
 from uuid import uuid4
 
 from .._log import LOG, level_to_int
@@ -78,7 +78,12 @@ def configure_structlog(
         - Existing structlog users may prefer ``shuuten_processors()``
           for full control over their processor pipeline.
     """
-    import structlog
+    try:
+        import structlog
+    except ImportError as e:
+        raise ImportError(
+            "Install structlog support with: pip install 'shuuten[structlog]'"
+        ) from e
 
     if renderer is None:
         renderer = structlog.processors.JSONRenderer()
@@ -147,6 +152,7 @@ class ShuutenProcessor:
     event dictionary. It only sends notifications for events at or above
     ``min_level`` and does not require Shuuten to own the user's logger.
     """
+
     def __init__(
         self,
         notifier=None,
