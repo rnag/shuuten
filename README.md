@@ -256,9 +256,9 @@ See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftt
 
 ## Roadmap
 
-* PagerDuty / JSM Alerting destination
-* Context manager for exception capture
-* Optional "exceptions-only" alerting mode
+* Deferred / batched alert delivery
+* AWS Lambda failure monitoring
+* PagerDuty and JSM destinations
 * Expanded ECS and EKS support
 
 ## Credits

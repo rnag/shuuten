@@ -2,22 +2,23 @@
 
 ## 0.5.0 (2026-06-24)
 
-### Features
+### Added
 
-* Add first-class `structlog` integration via `ShuutenProcessor`
-* Add `configure_structlog()` helper for quick setup
-* Add `shuuten_processors()` helper for advanced processor customization
-* Support forwarding `structlog` events to configured destinations (Slack, Microsoft Teams, Email)
-* Preserve structured event fields and context from `structlog` log entries
-* Automatically inherit `min_level` from `shuuten.Config` when not explicitly configured
-* Add optional call-site metadata enrichment (`filename`, `lineno`, `func_name`, `module`)
-* Disable local notifier re-emission for `structlog` notifications to avoid duplicate log output
+- First-class structlog integration via `ShuutenProcessor`
+- `configure_structlog()` helper for quick setup
+- `shuuten_processors()` helper for advanced customization
+- Support for forwarding structlog events to configured destinations
+- Optional call-site metadata enrichment (`filename`, `lineno`, `func_name`, `module`)
+
+### Changed
+
+- `ShuutenProcessor` inherits `min_level` from `shuuten.Config` by default
+- Local notifier re-emission is disabled for structlog notifications to prevent duplicate log output
 
 ### Documentation
 
-* Add `structlog` integration examples to README
-* Add installation instructions for `shuuten[structlog]`
-* Clarify interaction between Shuuten `min_level` and structlog log filtering
+- Added structlog integration documentation and examples
+- Added installation instructions for `shuuten[structlog]`
 
 ## 0.4.0 (2026-06-21)
 
