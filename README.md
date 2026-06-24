@@ -174,8 +174,8 @@ and rendering; Shuuten forwards alert-worthy events to configured
 destinations.
 
 Requirements:
-* Install [structlog] (`pip install shuuten[structlog]`)
-* Configure at least one [destination](#supported-destinations)
+  * Install [structlog] (`pip install shuuten[structlog]`)
+  * Configure at least one [destination](#supported-destinations)
 
 Then, configure processors for [structlog]:
 
