@@ -6,7 +6,6 @@ from time import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from .._api import _get_notifier
 from .._log import LOG, level_to_int
 from .._models import Event
 from .._runtime import get_notification_context
@@ -44,7 +43,9 @@ _RESERVED_EVENT_KEYS = (
 )
 
 
-def shuuten_processors(*, callsite: bool = True, add_level: bool = True):
+def shuuten_processors(*, callsite: bool = True,
+                       add_level: bool = True,
+                       processor: ShuutenProcessor | None = None):
     try:
         import structlog
     except ImportError as e:
@@ -69,11 +70,13 @@ def shuuten_processors(*, callsite: bool = True, add_level: bool = True):
             )
         )
 
-    processors.append(ShuutenProcessor())
+    processors.append(processor or ShuutenProcessor())
+
     return processors
 
 
 class ShuutenProcessor:
+
     def __init__(
         self,
         notifier=None,
@@ -85,6 +88,8 @@ class ShuutenProcessor:
         context_getter=None,
         dedupe_window_s: float = 30.0,
     ):
+        from .._api import _get_notifier
+
         self._notifier = notifier or _get_notifier()
 
         # if `min_level` not passed, don't overwrite
@@ -160,6 +165,9 @@ class ShuutenProcessor:
             action = (
                 event_dict.get('shuuten_action')
                 or (notify_ctx.action if notify_ctx else None)
+                or event_dict.get('func_name')
+                or event_dict.get('logger')
+                or event_dict.get('module')
                 or level
             )
 
