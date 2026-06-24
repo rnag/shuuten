@@ -163,6 +163,49 @@ log = shuuten.get_logger(__name__)
 log.info({'event': 'app_requested', 'app_id': 'A123'})
 ```
 
+## Integrations
+
+### structlog
+
+[structlog]: https://www.structlog.org/en/stable/
+
+Use Shuuten as a [structlog] processor. Keep `structlog` for logging
+and rendering; Shuuten forwards alert-worthy events to configured
+destinations.
+
+Requirements:
+* Install [structlog] (`pip install shuuten[structlog]`)
+* Configure at least one [destination](#supported-destinations)
+
+Then, configure processors for [structlog]:
+
+```python
+import logging
+
+import structlog
+import shuuten
+from shuuten.integrations.structlog import configure_structlog
+
+shuuten.init(
+    shuuten.Config(
+        min_level=logging.INFO,
+        slack_webhook_url="https://hooks.slack.com/services/...",
+    )
+)
+
+configure_structlog()
+
+log = structlog.get_logger(__name__)
+
+log.debug("logged locally")  # not sent to destinations
+log.info("sent because min_level=INFO")
+log.error("failed", order_id=123)
+```
+
+That's it. Shuuten will forward events at or above `min_level`
+to configured destinations while preserving normal structlog output.
+
+> `min_level` controls what Shuuten sends to destinations. It does not filter structlog console output.
 
 ## Configuration
 
@@ -213,7 +256,6 @@ See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftt
 
 ## Roadmap
 
-* Structlog processor integration
 * PagerDuty / JSM Alerting destination
 * Context manager for exception capture
 * Optional "exceptions-only" alerting mode

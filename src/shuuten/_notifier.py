@@ -46,11 +46,21 @@ class Notifier:
         self._config = config
         self._destinations = list(destinations) if destinations else []
         self._logger = logger = logger or getLogger(
-            f'{self._config.app}.shuuten'
+            f'{app}.shuuten' if (app := self._config.app) else 'shuuten'
         )
         logger.propagate = True
 
-    def notify(self, event: Event, *, exc: BaseException | None = None) -> None:
+    @property
+    def config(self) -> Config:
+        return self._config
+
+    def notify(
+        self,
+        event: Event,
+        *,
+        exc: BaseException | None = None,
+        emit_local_log: bool | None = None,
+    ) -> None:
         # fill defaults from config
         if event.env is None:
             event.env = self._config.env
@@ -75,7 +85,13 @@ class Notifier:
             exc_text = redact(exc_text)
 
         # 1. local log (CloudWatch)
-        if self._config.emit_local_log:
+        should_emit_local_log = (
+            self._config.emit_local_log
+            if emit_local_log is None
+            else emit_local_log
+        )
+
+        if should_emit_local_log:
             payload = redact(
                 {
                     'app': self._config.app,

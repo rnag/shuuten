@@ -4,7 +4,7 @@ __all__ = [
     'ShuutenNotificationHandler',
 ]
 
-from ._logging import (
+from .logging import (
     ShuutenContextFilter,
     ShuutenJSONFormatter,
     ShuutenNotificationHandler,
