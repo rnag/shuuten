@@ -272,18 +272,31 @@ class DeferredContext:
 
             if record.exc is not None:
                 has_exception = True
-                tb = ''.join(format_exception(type(record.exc), record.exc, record.exc.__traceback__))
-                alert["exception"] = f"{type(record.exc).__name__}: {record.exc}"
-                alert["traceback"] = tb[-2500:]
+                tb = ''.join(
+                    format_exception(
+                        type(record.exc), record.exc, record.exc.__traceback__
+                    )
+                )
+                alert['exception'] = (
+                    f'{type(record.exc).__name__}: {record.exc}'
+                )
+                alert['traceback'] = tb[-2500:]
 
             alerts.append(alert)
 
         count = len(alerts)
         noun = 'alert' if count == 1 else 'alerts'
 
+        if has_exception:
+            level = 'error'
+            summary = f'Execution failed — {count} {noun}'
+        else:
+            level = max_level
+            summary = f'{count} {noun} captured'
+
         return Event(
-            level='error' if has_exception else max_level,
-            summary=f'{count} {noun} captured',
+            level=level,
+            summary=summary,
             message=None,
             workflow=self.workflow,
             action=self.action,

@@ -2,16 +2,28 @@ from __future__ import annotations
 
 import json
 
-from .._formatting import is_grouped_event, get_group_alerts
+from .._formatting import (
+    alert_details,
+    format_alert_location,
+    get_group_alerts,
+    is_grouped_event,
+)
 from .._models import Event, SlackFormat
 from .._requests import send_to_slack
 
+_LEVEL_EMOJI = {
+    'DEBUG': '🔎',
+    'INFO': 'ℹ️',
+    'WARNING': '⚠️',
+    'ERROR': '🚨',
+    'CRITICAL': '🔥',
+}
 
 
 def _field(label: str, value: object | None) -> dict | None:
-    if value in (None, ""):
+    if value in (None, ''):
         return None
-    return {"type": "mrkdwn", "text": f"*{label}*\n{value}"}
+    return {'type': 'mrkdwn', 'text': f'*{label}*\n{value}'}
 
 
 def _code_block(
@@ -21,13 +33,13 @@ def _code_block(
     limit: int = 1800,
 ) -> dict:
     if len(text) > limit:
-        text = text[:limit] + "\n…[TRUNCATED]"
+        text = text[:limit] + '\n…[TRUNCATED]'
 
     return {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": f"*{title}*\n```{text}```",
+        'type': 'section',
+        'text': {
+            'type': 'mrkdwn',
+            'text': f'*{title}*\n```{text}```',
         },
     }
 
@@ -46,17 +58,25 @@ def _json_block(
     )
 
     if len(text) > limit:
-        text = text[:limit] + "\n…[TRUNCATED]"
+        text = text[:limit] + '\n…[TRUNCATED]'
 
     return _code_block(title, text, limit=10_000)
 
 
-def _header(event: Event) -> list[dict]:
-    title = f"{event.level}: {event.summary or event.message or 'Shuuten alert'}"
+def _header(event: Event, *, show_level: bool = True) -> list[dict]:
+    lvl = event.level.upper()
+    emoji = _LEVEL_EMOJI.get(lvl, "🚨")
+    title = event.summary or event.message or "Shuuten alert"
+
+    if show_level:
+        text = f"{emoji} {lvl}: {title}"
+    else:
+        text = f"{emoji} {title}"
+
     return [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": title[:150], "emoji": True},
+            "text": {"type": "plain_text", "text": text[:150], "emoji": True},
         }
     ]
 
@@ -66,20 +86,20 @@ def _meta_fields(event: Event) -> list[dict]:
     ctx = event.context or {}
 
     fields = [
-        _field("App", ctx.get("app")),
-        _field("Env", event.env),
-        _field("Workflow", event.workflow),
-        _field("Action", event.action),
-        _field("Run ID", event.run_id),
-        _field("Function", src.get("function_name")),
-        _field("Request ID", src.get("request_id")),
-        _field("Account", src.get("account_name") or src.get("account_id")),
-        _field("Region", src.get("region")),
-        _field("Logger", ctx.get("logger")),
+        _field('App', ctx.get('app')),
+        _field('Env', event.env),
+        _field('Workflow', event.workflow),
+        _field('Action', event.action),
+        _field('Run ID', event.run_id),
+        _field('Function', src.get('function_name')),
+        _field('Request ID', src.get('request_id')),
+        _field('Account', src.get('account_name') or src.get('account_id')),
+        _field('Region', src.get('region')),
+        _field('Logger', ctx.get('logger')),
         _field(
-            "File",
+            'File',
             f'{ctx.get("file")}:{ctx.get("lineno")}'
-            if ctx.get("file") and ctx.get("lineno")
+            if ctx.get('file') and ctx.get('lineno')
             else None,
         ),
     ]
@@ -92,10 +112,10 @@ def _links(event: Event) -> list[dict]:
     links = []
 
     if event.log_url:
-        links.append(f"<{event.log_url}|CloudWatch Logs>")
-    if src.get("function_url"):
+        links.append(f'<{event.log_url}|CloudWatch Logs>')
+    if src.get('function_url'):
         links.append(f'<{src["function_url"]}|Lambda>')
-    if src.get("source_code"):
+    if src.get('source_code'):
         links.append(f'<{src["source_code"]}|Source>')
 
     if not links:
@@ -103,8 +123,8 @@ def _links(event: Event) -> list[dict]:
 
     return [
         {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": " · ".join(links)},
+            'type': 'section',
+            'text': {'type': 'mrkdwn', 'text': ' · '.join(links)},
         }
     ]
 
@@ -116,11 +136,11 @@ def _visible_context(
 ) -> dict:
     out = dict(ctx)
 
-    for k in ("app", "logger", "file", "lineno", "func"):
+    for k in ('app', 'logger', 'file', 'lineno', 'func'):
         out.pop(k, None)
 
     if drop_alerts:
-        out.pop("alerts", None)
+        out.pop('alerts', None)
 
     return out
 
@@ -132,7 +152,7 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
 
 
 def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
-    blocks = _header(event)
+    blocks = _header(event, show_level=False)
 
     fields = _meta_fields(event)
     if fields:
@@ -149,30 +169,35 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
             msg = alert.get('message') or alert.get('summary') or 'Alert'
             exception = alert.get('exception')
 
-            title = f'{msg} — {exception}' if exception else msg
+            loc = format_alert_location(alert)
+            details = alert_details(alert)
 
-            loc = ''
-            if alert.get('file') and alert.get('lineno'):
-                loc = f' — `{alert["file"]}:{alert["lineno"]}`'
+            emoji = _LEVEL_EMOJI.get(level, '•')
+            lines.append(f'{i}. {emoji} *{level}*')
+            if loc:
+                lines.append(loc)
 
-            lines.append(f'{i}. *{level}* `{title}`{loc}')
+            # title = format_alert_title(alert)
+            if exception:
+                lines.append(f'   `{exception}`')
+            else:
+                lines.append(f'   *Message*```{msg}```')
 
-            details = alert.get('context')
-            if isinstance(details, dict) and details:
+
+            if details and isinstance(details, dict):
                 lines.append(
-                    '```'
+                    '   *Context*```'
                     + json.dumps(
                         details,
+                        indent=2,
                         default=str,
                         ensure_ascii=False,
                     )[:800]
                     + '```'
                 )
 
-            traceback_text = alert.get('traceback')
-            if traceback_text:
-                tb = str(traceback_text)[-1800:]
-                lines.append(f'```{tb}```')
+            if traceback_text := alert.get('traceback'):
+                lines.append(f'```{str(traceback_text)[-1800:]}```')
 
         if len(alerts) > 10:
             lines.append(f'… {len(alerts) - 10} more alerts')
@@ -182,7 +207,7 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
                 'type': 'section',
                 'text': {
                     'type': 'mrkdwn',
-                    'text': '*Alerts captured*\n' + '\n'.join(lines),
+                    'text': '*Alerts captured*\n\n' + '\n\n'.join(lines),
                 },
             }
         )
@@ -196,7 +221,7 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
 
 
 def slack_blocks_for_single_event(event: Event) -> list[dict]:
-    blocks = _header(event)
+    blocks = _header(event, show_level=True)
 
     fields = _meta_fields(event)
     if fields:
@@ -219,7 +244,6 @@ def slack_blocks_for_single_event(event: Event) -> list[dict]:
 
 
 class SlackWebhookDestination:
-
     __slots__ = (
         '_webhook_url',
         '_username',
