@@ -6,6 +6,7 @@ from enum import Enum
 from logging import ERROR, WARNING
 from os import getenv
 from time import time
+from traceback import format_exception
 from typing import Any, Union
 from uuid import uuid4
 
@@ -271,9 +272,9 @@ class DeferredContext:
 
             if record.exc is not None:
                 has_exception = True
-                alert['exception'] = (
-                    f'{type(record.exc).__name__}: {record.exc}'
-                )
+                tb = ''.join(format_exception(type(record.exc), record.exc, record.exc.__traceback__))
+                alert["exception"] = f"{type(record.exc).__name__}: {record.exc}"
+                alert["traceback"] = tb[-2500:]
 
             alerts.append(alert)
 
@@ -283,7 +284,7 @@ class DeferredContext:
         return Event(
             level='error' if has_exception else max_level,
             summary=f'{count} {noun} captured',
-            message=f'{count} alert-worthy events captured during execution.',
+            message=None,
             workflow=self.workflow,
             action=self.action,
             run_id=self.run_id,

@@ -2,132 +2,180 @@ from __future__ import annotations
 
 import json
 
+from .._formatting import is_grouped_event, get_group_alerts
 from .._models import Event, SlackFormat
 from .._requests import send_to_slack
 
 
-def slack_blocks_for_event(event: Event) -> list[dict]:
+
+def _field(label: str, value: object | None) -> dict | None:
+    if value in (None, ""):
+        return None
+    return {"type": "mrkdwn", "text": f"*{label}*\n{value}"}
+
+
+def _code_block(
+    title: str,
+    text: str,
+    *,
+    limit: int = 1800,
+) -> dict:
+    if len(text) > limit:
+        text = text[:limit] + "\n…[TRUNCATED]"
+
+    return {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": f"*{title}*\n```{text}```",
+        },
+    }
+
+
+def _json_block(
+    title: str,
+    value: dict,
+    *,
+    limit: int = 1500,
+) -> dict:
+    text = json.dumps(
+        value,
+        indent=2,
+        default=str,
+        ensure_ascii=False,
+    )
+
+    if len(text) > limit:
+        text = text[:limit] + "\n…[TRUNCATED]"
+
+    return _code_block(title, text, limit=10_000)
+
+
+def _header(event: Event) -> list[dict]:
+    title = f"{event.level}: {event.summary or event.message or 'Shuuten alert'}"
+    return [
+        {
+            "type": "header",
+            "text": {"type": "plain_text", "text": title[:150], "emoji": True},
+        }
+    ]
+
+
+def _meta_fields(event: Event) -> list[dict]:
     src = event.source or {}
     ctx = event.context or {}
 
-    exc_text = event.exception
-
-    def add_field(fields: list[dict], label: str, value: str | None):
-        if value:
-            fields.append({'type': 'mrkdwn', 'text': f'*{label}*\n{value}'})
-
-    # Header: plain_text only
-    if exc_text:
-        header_text = f'🚨 {event.summary}'
-        top_line = f'*{event.level}* — `{event.action}`'
-    else:
-        # for forwarded logs: show actual message in a visible way
-        header_text = (
-            f'{event.level}: {(event.message or event.summary or "Log")}'
-        )
-        top_line = f'`{event.action}`'
-
-    blocks: list[dict] = [
-        {
-            'type': 'header',
-            'text': {
-                'type': 'plain_text',
-                'text': header_text[:150],
-                'emoji': True,
-            },
-        },
-        {
-            'type': 'section',
-            'text': {'type': 'mrkdwn', 'text': top_line},
-        },
+    fields = [
+        _field("App", ctx.get("app")),
+        _field("Env", event.env),
+        _field("Workflow", event.workflow),
+        _field("Action", event.action),
+        _field("Run ID", event.run_id),
+        _field("Function", src.get("function_name")),
+        _field("Request ID", src.get("request_id")),
+        _field("Account", src.get("account_name") or src.get("account_id")),
+        _field("Region", src.get("region")),
+        _field("Logger", ctx.get("logger")),
+        _field(
+            "File",
+            f'{ctx.get("file")}:{ctx.get("lineno")}'
+            if ctx.get("file") and ctx.get("lineno")
+            else None,
+        ),
     ]
 
-    # Put message in its own section (mrkdwn supports backticks)
-    if (not exc_text) and event.message:
-        blocks.append(
-            {
-                'type': 'section',
-                'text': {
-                    'type': 'mrkdwn',
-                    'text': f'*Message*\n```{event.message[:1800]}```',
-                },
-            }
-        )
+    return [f for f in fields if f is not None]
 
-    # Key fields (keep compact)
-    f: list[dict] = []
-    add_field(f, 'App', ctx.get('app'))
-    add_field(f, 'Env', event.env)
-    add_field(f, 'Workflow', event.workflow)
-    add_field(f, 'Run ID', event.run_id)
-    add_field(f, 'Function', src.get('function_name'))
-    add_field(f, 'Request ID', src.get('request_id'))
-    add_field(f, 'Account', src.get('account_name') or src.get('account_id'))
-    add_field(f, 'Region', src.get('region'))
 
-    # Optional call-site fields (if you include them)
-    add_field(f, 'Logger', ctx.get('logger'))
-    add_field(
-        f,
-        'File',
-        f'{ctx.get("file")}:{ctx.get("lineno")}'
-        if ctx.get('file') and ctx.get('lineno')
-        else None,
-    )
-
-    if f:
-        blocks.append({'type': 'section', 'fields': f[:10]})
-
-    # Links row
+def _links(event: Event) -> list[dict]:
+    src = event.source or {}
     links = []
+
     if event.log_url:
-        links.append(f'<{event.log_url}|CloudWatch Logs>')
-    fn_url = src.get('function_url')
-    if fn_url:
-        links.append(f'<{fn_url}|Lambda>')
-    repo = src.get('source_code')
-    if repo:
-        links.append(f'<{repo}|Source>')
+        links.append(f"<{event.log_url}|CloudWatch Logs>")
+    if src.get("function_url"):
+        links.append(f'<{src["function_url"]}|Lambda>')
+    if src.get("source_code"):
+        links.append(f'<{src["source_code"]}|Source>')
 
-    if links:
-        blocks.append(
-            {
-                'type': 'section',
-                'text': {'type': 'mrkdwn', 'text': ' · '.join(links)},
-            }
-        )
+    if not links:
+        return []
 
-    # Exception (only when present)
-    if exc_text:
-        trimmed = exc_text[-2500:]
-        blocks.append(
-            {
-                'type': 'section',
-                'text': {
-                    'type': 'mrkdwn',
-                    'text': f'*Exception*\n```{trimmed}```',
-                },
-            }
-        )
+    return [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": " · ".join(links)},
+        }
+    ]
 
-    # Context: don’t repeat logger/file/etc (it’s already shown)
-    context_for_slack = dict(ctx)
-    for k in ('logger', 'file', 'lineno', 'func'):
-        context_for_slack.pop(k, None)
 
-    alerts = context_for_slack.pop('alerts', None)
-    if alerts and isinstance(alerts, list):
+def _visible_context(
+    ctx: dict,
+    *,
+    drop_alerts: bool = False,
+) -> dict:
+    out = dict(ctx)
+
+    for k in ("app", "logger", "file", "lineno", "func"):
+        out.pop(k, None)
+
+    if drop_alerts:
+        out.pop("alerts", None)
+
+    return out
+
+
+def slack_blocks_for_event(event: Event) -> list[dict]:
+    if is_grouped_event(event):
+        return slack_blocks_for_grouped_event(event)
+    return slack_blocks_for_single_event(event)
+
+
+def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
+    blocks = _header(event)
+
+    fields = _meta_fields(event)
+    if fields:
+        blocks.append({'type': 'section', 'fields': fields[:10]})
+
+    blocks.extend(_links(event))
+
+    alerts = get_group_alerts(event)
+    if alerts:
         lines = []
-        for alert in alerts[:10]:
+
+        for i, alert in enumerate(alerts[:10], start=1):
             level = str(alert.get('level', '')).upper()
             msg = alert.get('message') or alert.get('summary') or 'Alert'
+            exception = alert.get('exception')
+
+            title = f'{msg} — {exception}' if exception else msg
+
             loc = ''
             if alert.get('file') and alert.get('lineno'):
                 loc = f' — `{alert["file"]}:{alert["lineno"]}`'
-            lines.append(f'• *{level}* `{msg}`{loc}')
+
+            lines.append(f'{i}. *{level}* `{title}`{loc}')
+
+            details = alert.get('context')
+            if isinstance(details, dict) and details:
+                lines.append(
+                    '```'
+                    + json.dumps(
+                        details,
+                        default=str,
+                        ensure_ascii=False,
+                    )[:800]
+                    + '```'
+                )
+
+            traceback_text = alert.get('traceback')
+            if traceback_text:
+                tb = str(traceback_text)[-1800:]
+                lines.append(f'```{tb}```')
 
         if len(alerts) > 10:
-            lines.append(f'• … {len(alerts) - 10} more')
+            lines.append(f'… {len(alerts) - 10} more alerts')
 
         blocks.append(
             {
@@ -139,24 +187,39 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
             }
         )
 
-    if context_for_slack:
-        ctx_json = json.dumps(context_for_slack, indent=2, default=str)
-        ctx_json = ctx_json[:1500]
-        blocks.append(
-            {
-                'type': 'section',
-                'text': {
-                    'type': 'mrkdwn',
-                    'text': f'*Details*\n```{ctx_json}```',
-                },
-            }
-        )
+    ctx = _visible_context(event.context or {}, drop_alerts=True)
+    if ctx:
+        blocks.append(_json_block('Details', ctx))
+
+    blocks.append({'type': 'divider'})
+    return blocks
+
+
+def slack_blocks_for_single_event(event: Event) -> list[dict]:
+    blocks = _header(event)
+
+    fields = _meta_fields(event)
+    if fields:
+        blocks.append({'type': 'section', 'fields': fields[:10]})
+
+    blocks.extend(_links(event))
+
+    if event.message and not event.exception:
+        blocks.append(_code_block('Message', event.message, limit=1800))
+
+    if event.exception:
+        blocks.append(_code_block('Exception', event.exception[-2500:]))
+
+    ctx = _visible_context(event.context or {})
+    if ctx:
+        blocks.append(_json_block('Details', ctx))
 
     blocks.append({'type': 'divider'})
     return blocks
 
 
 class SlackWebhookDestination:
+
     __slots__ = (
         '_webhook_url',
         '_username',
