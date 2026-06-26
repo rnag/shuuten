@@ -6,13 +6,23 @@ from typing import cast
 from uuid import uuid4
 
 from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, NotificationContext, Platform, DeliveryMode, DeferredContext
+from ._models import (
+    Config,
+    DeferredContext,
+    DeliveryMode,
+    Event,
+    NotificationContext,
+    Platform,
+)
 from ._notifier import Notifier
 from ._runtime import (
     detect_and_set_context,
+    get_deferred_context,
+    reset_deferred_context,
     reset_notification_context,
     reset_runtime_context,
-    set_notification_context, get_deferred_context, set_deferred_context, reset_deferred_context,
+    set_deferred_context,
+    set_notification_context,
 )
 from .destinations import (
     MSTeamsWebhookDestination,
@@ -239,12 +249,10 @@ def capture(
                             action=action or fn.__qualname__,
                             run_id=run_id,
                             records=[],
-                            depth=0
                         )
                         deferred_token = set_deferred_context(deferred_ctx)
                         outermost = True
                     else:
-                        deferred_ctx.depth += 1
                         deferred_token = None
                         outermost = False
                 else:
@@ -281,13 +289,17 @@ def capture(
                 return None
 
             finally:
+                if outermost:
+                    group_event = deferred_ctx.to_group_event()
+                    # noinspection PyProtectedMember
+                    notifier._send_now(
+                        group_event,
+                        exc=None,
+                    )
+                    reset_deferred_context(deferred_token)
+
                 reset_notification_context(notify_token)
                 reset_runtime_context(rt_token)
-
-                if outermost:
-                    for record in deferred_ctx.records:
-                        notifier.notify(record.event, exc=record.exc)
-                    reset_deferred_context(deferred_token)
 
         return wrapper
 

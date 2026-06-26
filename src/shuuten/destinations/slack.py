@@ -115,6 +115,30 @@ def slack_blocks_for_event(event: Event) -> list[dict]:
     for k in ('logger', 'file', 'lineno', 'func'):
         context_for_slack.pop(k, None)
 
+    alerts = context_for_slack.pop('alerts', None)
+    if alerts and isinstance(alerts, list):
+        lines = []
+        for alert in alerts[:10]:
+            level = str(alert.get('level', '')).upper()
+            msg = alert.get('message') or alert.get('summary') or 'Alert'
+            loc = ''
+            if alert.get('file') and alert.get('lineno'):
+                loc = f' — `{alert["file"]}:{alert["lineno"]}`'
+            lines.append(f'• *{level}* `{msg}`{loc}')
+
+        if len(alerts) > 10:
+            lines.append(f'• … {len(alerts) - 10} more')
+
+        blocks.append(
+            {
+                'type': 'section',
+                'text': {
+                    'type': 'mrkdwn',
+                    'text': '*Alerts captured*\n' + '\n'.join(lines),
+                },
+            }
+        )
+
     if context_for_slack:
         ctx_json = json.dumps(context_for_slack, indent=2, default=str)
         ctx_json = ctx_json[:1500]

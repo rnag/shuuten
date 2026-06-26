@@ -222,7 +222,75 @@ class DeferredContext:
     action: str | None
     run_id: str
     records: list[DeferredRecord]
-    depth: int
+
+    def to_group_event(self: DeferredContext) -> Event:
+        alerts = []
+        max_level = 'info'
+        has_exception = False
+
+        severity = {
+            'debug': 10,
+            'info': 20,
+            'warning': 30,
+            'error': 40,
+            'critical': 50,
+        }
+
+        for record in self.records:
+            e = record.event
+            level = e.level.lower()
+
+            if severity.get(level, 0) > severity.get(max_level, 0):
+                max_level = level
+
+            alert = {
+                'level': level,
+                'summary': e.summary,
+                'message': e.message,
+                'action': e.action,
+            }
+
+            ctx = e.context or {}
+
+            if ctx.get('logger'):
+                alert['logger'] = ctx['logger']
+            if ctx.get('file'):
+                alert['file'] = ctx['file']
+            if ctx.get('lineno'):
+                alert['lineno'] = ctx['lineno']
+            if ctx.get('func'):
+                alert['func'] = ctx['func']
+
+            details = {
+                k: v
+                for k, v in ctx.items()
+                if k not in {'app', 'logger', 'file', 'lineno', 'func'}
+            }
+            if details:
+                alert['context'] = details
+
+            if record.exc is not None:
+                has_exception = True
+                alert['exception'] = (
+                    f'{type(record.exc).__name__}: {record.exc}'
+                )
+
+            alerts.append(alert)
+
+        count = len(alerts)
+        noun = 'alert' if count == 1 else 'alerts'
+
+        return Event(
+            level='error' if has_exception else max_level,
+            summary=f'{count} {noun} captured',
+            message=f'{count} alert-worthy events captured during execution.',
+            workflow=self.workflow,
+            action=self.action,
+            run_id=self.run_id,
+            context={
+                'alerts': alerts,
+            },
+        )
 
 
 @dataclass(frozen=True, slots=True)
