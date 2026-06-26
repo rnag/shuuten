@@ -6,13 +6,13 @@ from typing import cast
 from uuid import uuid4
 
 from ._log import LOG, quiet_third_party_logs
-from ._models import Config, Event, NotificationContext, Platform
+from ._models import Config, Event, NotificationContext, Platform, DeliveryMode, DeferredContext
 from ._notifier import Notifier
 from ._runtime import (
     detect_and_set_context,
     reset_notification_context,
     reset_runtime_context,
-    set_notification_context,
+    set_notification_context, get_deferred_context, set_deferred_context, reset_deferred_context,
 )
 from .destinations import (
     MSTeamsWebhookDestination,
@@ -191,6 +191,7 @@ def capture(
     platform: Platform = Platform.AUTO,
     summary: str = 'Automation failed',
     action: str | None = None,
+    delivery_mode: str | DeliveryMode | None = None,
     notifier: Notifier | None = None,
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
     context_getter=None,  # fn(args, kwargs) -> dict
@@ -209,8 +210,11 @@ def capture(
     notifier = notifier or _NOTIFIER
 
     def deco(fn):
+
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            nonlocal delivery_mode
+
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
             run_id = str(uuid4())
@@ -223,6 +227,30 @@ def capture(
                     run_id=run_id,
                 )
             )
+
+            if delivery_mode is not None:
+                if isinstance(delivery_mode, str):
+                    delivery_mode = DeliveryMode(delivery_mode)
+
+                if delivery_mode is DeliveryMode.DEFERRED:
+                    if (deferred_ctx := get_deferred_context()) is None:
+                        deferred_ctx = DeferredContext(
+                            workflow=workflow,
+                            action=action or fn.__qualname__,
+                            run_id=run_id,
+                            records=[],
+                            depth=0
+                        )
+                        deferred_token = set_deferred_context(deferred_ctx)
+                        outermost = True
+                    else:
+                        deferred_ctx.depth += 1
+                        deferred_token = None
+                        outermost = False
+                else:
+                    outermost = False
+            else:
+                outermost = False
 
             try:
                 return fn(*args, **kwargs)
@@ -255,6 +283,11 @@ def capture(
             finally:
                 reset_notification_context(notify_token)
                 reset_runtime_context(rt_token)
+
+                if outermost:
+                    for record in deferred_ctx.records:
+                        notifier.notify(record.event, exc=record.exc)
+                    reset_deferred_context(deferred_token)
 
         return wrapper
 

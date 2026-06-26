@@ -39,6 +39,12 @@ class Platform(str, Enum):
     ECS = 'ecs'
 
 
+class DeliveryMode(str, Enum):
+    IMMEDIATE = 'immediate'
+    DEFERRED = 'deferred'
+    LOGS_ONLY = 'logs_only'
+
+
 @dataclass(slots=True)
 class Config:
     app: str | None = None
@@ -208,6 +214,27 @@ class Event:
         e.level = e.level.upper()
 
         return e
+
+
+@dataclass(frozen=True, slots=True)
+class DeferredContext:
+    workflow: str | None
+    action: str | None
+    run_id: str
+    records: list[DeferredRecord]
+    depth: int
+
+
+@dataclass(frozen=True, slots=True)
+class DeferredRecord:
+    event: Event
+    exc: BaseException | None = None
+
+
+# @dataclass(slots=True)
+# class AlertGroup:
+#     event: Event
+#     records: list[DeferredRecord]
 
 
 @dataclass(frozen=True, slots=True)

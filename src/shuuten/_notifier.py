@@ -5,9 +5,9 @@ from logging import Logger, getLogger
 from traceback import format_exception
 from typing import TYPE_CHECKING, Protocol
 
-from ._models import Config, Event, detect_context
+from ._models import Config, Event, detect_context, DeferredRecord
 from ._redact import redact
-from ._runtime import get_runtime_context
+from ._runtime import get_runtime_context, get_deferred_context
 
 if TYPE_CHECKING:
 
@@ -61,6 +61,11 @@ class Notifier:
         exc: BaseException | None = None,
         emit_local_log: bool | None = None,
     ) -> None:
+
+        if ctx := get_deferred_context():
+            ctx.records.append(DeferredRecord(event, exc=exc))
+            return
+
         # fill defaults from config
         if event.env is None:
             event.env = self._config.env
