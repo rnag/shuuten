@@ -175,7 +175,7 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
             emoji = _LEVEL_EMOJI.get(level, '•')
             lines.append(f'{i}. {emoji} *{level}*')
             if loc:
-                lines.append(loc)
+                lines.append(f'   `{loc}`')
 
             # title = format_alert_title(alert)
             if exception:

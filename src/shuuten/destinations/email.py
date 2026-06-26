@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from html import escape as h
 
+from .._formatting import (
+    alert_details,
+    format_alert_location,
+    format_alert_title,
+    get_group_alerts,
+    is_grouped_event,
+)
 from .._models import Event
 
 
@@ -29,15 +37,61 @@ def _subject_for_event(event: Event) -> str:
     return f'{lvl} {app_part}{env} {wf}: {action}'
 
 
+def _compact_json(value: object, *, limit: int = 4000) -> str:
+    text = json.dumps(value, indent=2, default=str, ensure_ascii=False)
+    if len(text) > limit:
+        return text[:limit] + '\n…[TRUNCATED]'
+    return text
+
+
+def _text_alerts(event: Event) -> list[str]:
+    lines: list[str] = []
+    alerts = get_group_alerts(event)
+
+    if not alerts:
+        return lines
+
+    lines.append('')
+    lines.append('alerts:')
+
+    for i, alert in enumerate(alerts[:10], start=1):
+        level = str(alert.get('level', '')).upper()
+        title = format_alert_title(alert)
+        loc = format_alert_location(alert)
+        details = alert_details(alert)
+        traceback_text = alert.get('traceback')
+
+        lines.append(f'  {i}. {level}')
+        if loc:
+            lines.append(f'     location: {loc}')
+        lines.append(f'     message: {title}')
+
+        if details:
+            lines.append('     context:')
+            for line in _compact_json(details, limit=1200).splitlines():
+                lines.append(f'       {line}')
+
+        if traceback_text:
+            lines.append('     traceback:')
+            for line in str(traceback_text)[-3000:].splitlines():
+                lines.append(f'       {line}')
+
+    if len(alerts) > 10:
+        lines.append(f'  … {len(alerts) - 10} more alerts')
+
+    return lines
+
+
 def _text_body(event: Event) -> str:
     # plaintext fallback (always include)
     app = (event.context or {}).get('app')
     lines = [
         f'{event.summary}',
-        f'level={event.level} app={app} env={event.env} ',
+        f'level={event.level} app={app} env={event.env}',
         f'workflow={event.workflow} action={event.action}',
         f'run_id={event.run_id}',
     ]
+
     if event.log_url:
         lines.append(f'logs: {event.log_url}')
 
@@ -46,9 +100,21 @@ def _text_body(event: Event) -> str:
         for k, v in event.source.items():
             lines.append(f'  {k}: {v}')
 
-    if event.context:
+    if is_grouped_event(event):
+        lines.extend(_text_alerts(event))
+    elif event.message:
+        lines.append('')
+        lines.append('message:')
+        lines.append(event.message)
+
+    context_for_email = dict(event.context or {})
+    for k in ('app', 'logger', 'file', 'lineno', 'func', 'alerts'):
+        context_for_email.pop(k, None)
+
+    if context_for_email:
+        lines.append('')
         lines.append('context:')
-        for k, v in event.context.items():
+        for k, v in context_for_email.items():
             lines.append(f'  {k}: {v}')
 
     if event.exception:
@@ -77,7 +143,7 @@ def _html_body(event: Event) -> str:
         """  # noqa: E501
 
     rows = [
-        row('Level', event.level),
+        row('Level', h(event.level)),
         row('Env', esc_env),
         row('Workflow', esc_workflow),
         row('Action', esc_action),
@@ -108,6 +174,64 @@ def _html_body(event: Event) -> str:
             f'background:#fff;border:1px solid #eee;">{rows}</table>'
         )
 
+    def pre_block(text: str, *, dark: bool = False) -> str:
+        bg = '#0b0b0b' if dark else '#f2f3f5'
+        color = '#f5f5f5' if dark else '#111'
+        return (
+            f'<pre style="white-space:pre-wrap;background:{bg};color:{color};'
+            'padding:12px;border-radius:6px;font-size:12px;overflow:auto;">'
+            f'{h(text)}</pre>'
+        )
+
+    def alerts_html() -> str:
+        alerts = get_group_alerts(event)
+        if not alerts:
+            return ''
+
+        parts = ['<h3 style="margin:16px 0 8px 0;">Alerts captured</h3>']
+
+        for i, alert in enumerate(alerts[:10], start=1):
+            level = str(alert.get('level', '')).upper()
+            color = _level_color(level)
+            title = format_alert_title(alert)
+            loc = format_alert_location(alert)
+            details = alert_details(alert)
+            traceback_text = alert.get('traceback')
+
+            parts.append(
+                f"""
+                <div style="border:1px solid #e5e5e5;border-left:5px solid {color};border-radius:8px;margin:10px 0;padding:12px;background:#fff;">
+                  <div style="font-size:13px;font-weight:700;color:{color};margin-bottom:6px;">
+                    {i}. {h(level)}
+                  </div>
+                """
+            )
+
+            if loc:
+                parts.append(
+                    f'<div style="font-size:12px;color:#666;margin-bottom:8px;"><code>{h(loc)}</code></div>'
+                )
+
+            if title:
+                parts.append('<div style="font-size:12px;font-weight:700;margin:8px 0;">Message</div>')
+                parts.append(pre_block(title))
+
+            if details:
+                parts.append('<div style="font-size:12px;font-weight:700;margin:8px 0;">Context</div>')
+                parts.append(pre_block(_compact_json(details, limit=1500)))
+
+            if traceback_text:
+                parts.append(pre_block(str(traceback_text)[-3500:], dark=True))
+
+            parts.append('</div>')
+
+        if len(alerts) > 10:
+            parts.append(
+                f'<div style="font-size:12px;color:#666;">… {len(alerts) - 10} more alerts</div>'
+            )
+
+        return ''.join(parts)
+
     exc_block = ''
     if event.exception:
         exc = event.exception
@@ -115,51 +239,51 @@ def _html_body(event: Event) -> str:
             exc = exc[-12000:]
         exc_block = f"""
         <h3 style='margin:16px 0 8px 0;'>Exception</h3>
-        <pre style='white-space:pre-wrap;background:#0b0b0b;color:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;overflow:auto;'>{h(exc)}</pre>
+        {pre_block(exc, dark=True)}
         """  # noqa: E501
 
     color = _level_color(event.level)
 
     msg_block = ''
-    if event.message:
+    if event.message and not is_grouped_event(event):
         msg = event.message
         if len(msg) > 4000:
             msg = msg[:4000] + '\n…(truncated)…'
         msg_block = f"""
           <h3 style="margin:16px 0 8px 0;">Message</h3>
-          <pre style="white-space:pre-wrap;background:#f2f3f5;color:#111;
-    padding:12px;border-radius:6px;font-size:12px;overflow:auto;">{h(msg)}</pre>
+          {pre_block(msg)}
         """
+
+    context_for_email = dict(event.context or {})
+    for k in ('app', 'logger', 'file', 'lineno', 'func', 'alerts'):
+        context_for_email.pop(k, None)
 
     return f"""
     <html>
       <body style="font-family:Arial, sans-serif;background:#f6f7f9;padding:16px;">
         <div style="max-width:720px;margin:0 auto;background:#fff;border:1px solid #e6e6e6;border-radius:10px;overflow:hidden;">
           <div style="background:{color};color:#fff;padding:12px 16px;">
-            <div style="font-size:16px;font-weight:700;">{
-        h(event.summary)
-    }</div>
-            <div style="font-size:12px;opacity:0.9;">{event.level} · {
-        esc_env
-    } · {esc_workflow} · {esc_action}</div>
+            <div style="font-size:16px;font-weight:700;">{h(event.summary)}</div>
+            <div style="font-size:12px;opacity:0.9;">{h(event.level)} · {esc_env} · {esc_workflow} · {esc_action}</div>
           </div>
 
           <div style="padding:16px;">
             {msg_block}
+
             <h3 style="margin:0 0 8px 0;">Summary</h3>
             <table style="border-collapse:collapse;width:100%;background:#fff;border:1px solid #eee;">
               {meta_rows}
             </table>
 
-            {
-        ('<h3 style="margin:16px 0 8px 0;">Links</h3>' + links) if links else ''
-    }
+            {('<h3 style="margin:16px 0 8px 0;">Links</h3>' + links) if links else ''}
+
+            {alerts_html() if is_grouped_event(event) else ''}
 
             <h3 style="margin:16px 0 8px 0;">Source</h3>
             {table_from_dict(event.source)}
 
             <h3 style="margin:16px 0 8px 0;">Context</h3>
-            {table_from_dict(event.context)}
+            {table_from_dict(context_for_email)}
 
             {exc_block}
           </div>

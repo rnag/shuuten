@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import json
 
+from .._formatting import (
+    alert_details,
+    format_alert_location,
+    format_alert_title,
+    get_group_alerts,
+    is_grouped_event,
+)
 from .._models import Event
 from .._requests import send_to_teams
+
 
 _LEVEL_META = {
     'DEBUG': ('🔎', 'accent', 'emphasis'),
@@ -27,6 +35,75 @@ def _compact_json(value: object, *, limit: int = 1800) -> str:
     if len(text) > limit:
         return text[:limit] + '\n…[TRUNCATED]'
     return text
+
+
+def _alert_container(alert: dict) -> dict:
+    level = str(alert.get('level', '')).upper()
+    emoji, text_color, _ = _LEVEL_META.get(level, _LEVEL_META['ERROR'])
+
+    title = format_alert_title(alert)
+    loc = format_alert_location(alert)
+    details = alert_details(alert)
+    traceback_text = alert.get('traceback')
+
+    items: list[dict] = [
+        {
+            'type': 'TextBlock',
+            'text': f'{emoji} {level}',
+            'weight': 'Bolder',
+            'color': text_color,
+            'wrap': True,
+        },
+    ]
+
+    if loc:
+        items.append(
+            {
+                'type': 'TextBlock',
+                'text': f'`{loc}`',
+                'isSubtle': True,
+                'spacing': 'Small',
+                'wrap': True,
+            }
+        )
+
+    if title:
+        items.append(
+            {
+                'type': 'TextBlock',
+                'text': f'```\n{title[:1800]}\n```',
+                'wrap': True,
+                'spacing': 'Small',
+            }
+        )
+
+    if details:
+        items.append(
+            {
+                'type': 'TextBlock',
+                'text': f'**Context**\n\n```\n{_compact_json(details, limit=1200)}\n```',
+                'wrap': True,
+                'spacing': 'Small',
+            }
+        )
+
+    if traceback_text:
+        tb = str(traceback_text)[-2500:]
+        items.append(
+            {
+                'type': 'TextBlock',
+                'text': f'```\n{tb}\n```',
+                'wrap': True,
+                'spacing': 'Small',
+            }
+        )
+
+    return {
+        'type': 'Container',
+        'separator': True,
+        'spacing': 'Medium',
+        'items': items,
+    }
 
 
 def teams_card_for_event(event: Event) -> dict:
@@ -96,7 +173,32 @@ def teams_card_for_event(event: Event) -> dict:
         },
     ]
 
-    if event.message:
+    if is_grouped_event(event):
+        alerts = get_group_alerts(event)
+        if alerts:
+            body.append(
+                {
+                    'type': 'TextBlock',
+                    'text': 'Alerts captured',
+                    'weight': 'Bolder',
+                    'spacing': 'Medium',
+                    'wrap': True,
+                }
+            )
+            for alert in alerts[:10]:
+                body.append(_alert_container(alert))
+
+            if len(alerts) > 10:
+                body.append(
+                    {
+                        'type': 'TextBlock',
+                        'text': f'… {len(alerts) - 10} more alerts',
+                        'isSubtle': True,
+                        'wrap': True,
+                    }
+                )
+
+    elif event.message:
         body.append(
             {
                 'type': 'TextBlock',
@@ -106,14 +208,14 @@ def teams_card_for_event(event: Event) -> dict:
         )
 
     context_for_teams = dict(ctx)
-    for k in ('app', 'logger', 'file', 'lineno', 'func'):
+    for k in ('app', 'logger', 'file', 'lineno', 'func', 'alerts'):
         context_for_teams.pop(k, None)
 
     if context_for_teams:
         body.append(
             {
                 'type': 'TextBlock',
-                'text': '**Details**\n\n```\n'
+                'text': '**Context**\n\n```\n'
                 f'{_compact_json(context_for_teams)}\n```',
                 'wrap': True,
             }
@@ -167,9 +269,7 @@ def teams_card_for_event(event: Event) -> dict:
                     '$schema': 'http://adaptivecards.io/schemas/adaptive-card.json',
                     'type': 'AdaptiveCard',
                     'version': '1.4',
-                    'msTeams': {
-                        'width': 'Full',
-                    },
+                    'msTeams': {'width': 'Full'},
                     'body': body,
                     'actions': actions,
                 },

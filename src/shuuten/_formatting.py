@@ -10,9 +10,15 @@ def get_group_alerts(event: Event) -> list[dict]:
     return alerts if isinstance(alerts, list) else []
 
 
+def format_alert_title(alert: dict) -> str:
+    msg = alert.get('message') or alert.get('summary') or 'Alert'
+    exc = alert.get('exception')
+    return f'{msg} — {exc}' if exc else msg
+
+
 def format_alert_location(alert: dict) -> str:
     if (file := alert.get('file')) and (line_no := alert.get('lineno')):
-        return f'   `{file}:{line_no}`'
+        return f'{file}:{line_no}'
     return ''
 
 
