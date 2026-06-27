@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
 from uuid import uuid4
@@ -192,6 +193,180 @@ def get_logger(name: str | None = None, configure_root: bool = False):
     return log
 
 
+# --- CAPTURE SCOPE / CAPTURE CLASS ---
+
+
+@contextmanager
+def _capture_scope(
+    *,
+    ctx_obj=None,
+    workflow: str | None = None,
+    platform: Platform = Platform.AUTO,
+    summary: str = 'Automation failed',
+    action: str | None = None,
+    effective_delivery_mode: DeliveryMode | None = None,
+    notifier: Notifier,
+    subject_id_getter=None,
+    context_getter=None,
+    fn_args: tuple = (),
+    fn_kwargs: dict | None = None,
+    re_raise: bool = True,
+):
+    fn_kwargs = fn_kwargs or {}
+    run_id = str(uuid4())
+
+    rt_token = detect_and_set_context(ctx_obj, platform)
+    notify_token = set_notification_context(
+        NotificationContext(
+            workflow=workflow,
+            action=action,
+            run_id=run_id,
+            delivery_mode=effective_delivery_mode,
+        )
+    )
+
+    outermost = False
+
+    if effective_delivery_mode is DeliveryMode.DEFERRED:
+        if get_deferred_context() is None:
+            outermost = True
+            deferred_ctx = DeferredContext(
+                workflow=workflow,
+                action=action,
+                run_id=run_id,
+                records=[],
+            )
+            deferred_token = set_deferred_context(deferred_ctx)
+
+    try:
+        yield
+
+    except Exception as e:
+        subject_id = (
+            subject_id_getter(fn_args, fn_kwargs)
+            if subject_id_getter
+            else None
+        )
+        context = context_getter(fn_args, fn_kwargs) if context_getter else {}
+        event = Event(
+            level='error',
+            summary=summary,
+            workflow=workflow,
+            action=action,
+            subject_id=subject_id,
+            context=context,
+            run_id=run_id,
+        )
+
+        notifier.notify(event, exc=e)
+
+        if re_raise:
+            raise
+
+    finally:
+        if outermost:
+            # noinspection PyUnboundLocalVariable
+            group_event = deferred_ctx.to_group_event()
+            # noinspection PyProtectedMember
+            notifier._send_now(
+                group_event,
+                exc=None,
+                send_destinations=True,
+            )
+            # noinspection PyUnboundLocalVariable
+            reset_deferred_context(deferred_token)
+
+        reset_notification_context(notify_token)
+        reset_runtime_context(rt_token)
+
+
+class _Capture:
+    def __init__(
+        self,
+        *,
+        config: Config | None = None,
+        workflow: str | None = None,
+        platform: Platform = Platform.AUTO,
+        summary: str = 'Automation failed',
+        action: str | None = None,
+        delivery_mode: str | DeliveryMode | None = None,
+        notifier: Notifier | None = None,
+        subject_id_getter=None,
+        context_getter=None,
+        re_raise: bool = True,
+        context=None,
+    ):
+        init(config)
+        self.notifier = notifier or _get_notifier()
+        self.workflow = workflow
+        self.platform = platform
+        self.summary = summary
+        self.action = action
+        self.subject_id_getter = subject_id_getter
+        self.context_getter = context_getter
+        self.re_raise = re_raise
+        self.context = context
+
+        effective_delivery_mode = (
+            DeliveryMode(delivery_mode)
+            if isinstance(delivery_mode, str)
+            else delivery_mode
+        )
+        if effective_delivery_mode is None:
+            effective_delivery_mode = self.notifier.config.delivery_mode
+        self.effective_delivery_mode = effective_delivery_mode
+        self._cm = None
+
+    def _scope(
+        self,
+        *,
+        ctx_obj=None,
+        action: str | None = None,
+        fn_args: tuple = (),
+        fn_kwargs: dict | None = None,
+    ):
+        return _capture_scope(
+            ctx_obj=ctx_obj,
+            workflow=self.workflow,
+            platform=self.platform,
+            summary=self.summary,
+            action=action or self.action,
+            effective_delivery_mode=self.effective_delivery_mode,
+            notifier=self.notifier,
+            subject_id_getter=self.subject_id_getter,
+            context_getter=self.context_getter,
+            fn_args=fn_args,
+            fn_kwargs=fn_kwargs,
+            re_raise=self.re_raise,
+        )
+
+    def __call__(self, fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            ctx_obj = args[-1] if args else self.context
+            with self._scope(
+                ctx_obj=ctx_obj,
+                action=self.action or fn.__qualname__,
+                fn_args=args,
+                fn_kwargs=kwargs,
+            ):
+                return fn(*args, **kwargs)
+
+        return wrapper
+
+    def __enter__(self):
+        self._cm = self._scope(
+            ctx_obj=self.context,
+            action=self.action or 'capture',
+        )
+        return self._cm.__enter__()
+
+    def __exit__(self, exc_type, exc, tb):
+        if self._cm is None:
+            return False
+        return self._cm.__exit__(exc_type, exc, tb)
+
+
 def capture(
     _fn=None,
     *,
@@ -205,112 +380,30 @@ def capture(
     subject_id_getter=None,  # fn(args, kwargs, result?) -> str | None
     context_getter=None,  # fn(args, kwargs) -> dict
     re_raise: bool = True,
+    context=None,
 ):
     """
-    Decorator for AWS Lambda Function or ECS Task or Local.
+    Decorator or context manager for AWS Lambda functions, ECS tasks, or local code.
 
-    Captures exceptions, enriches them with runtime context, and
-    notifies configured destinations. Exceptions are re-raised
-    by default.
+    Captures exceptions, enriches them with runtime context, and notifies
+    configured destinations. Exceptions are re-raised by default.
 
-    Summary used only if the wrapped function raises.
+    Summary is used only if the wrapped function or context block raises.
     """
-    # Initialize config (or from env if config=None) if needed.
-    # `delivery_mode` is scoped per capture invocation below; it should not
-    # mutate global config here.
-    init(config)
-    notifier = notifier or _get_notifier()
-
-    effective_delivery_mode = (
-        DeliveryMode(delivery_mode)
-        if isinstance(delivery_mode, str)
-        else delivery_mode
+    cap = _Capture(
+        config=config,
+        workflow=workflow,
+        platform=platform,
+        summary=summary,
+        action=action,
+        delivery_mode=delivery_mode,
+        notifier=notifier,
+        subject_id_getter=subject_id_getter,
+        context_getter=context_getter,
+        re_raise=re_raise,
+        context=context,
     )
-
-    if effective_delivery_mode is None and notifier is not None:
-        effective_delivery_mode = notifier.config.delivery_mode
-
-    def deco(fn):
-
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-
-            # detect lambda context safely
-            ctx_obj = args[-1] if args else None
-            run_id = str(uuid4())
-
-            rt_token = detect_and_set_context(ctx_obj, platform)
-            notify_token = set_notification_context(
-                NotificationContext(
-                    workflow=workflow,
-                    action=action or fn.__qualname__,
-                    run_id=run_id,
-                    delivery_mode=effective_delivery_mode,
-                )
-            )
-
-            outermost = False
-            # deferred_ctx = None
-            # deferred_token = None
-
-            if effective_delivery_mode is DeliveryMode.DEFERRED:
-                if get_deferred_context() is None:
-                    outermost = True
-                    deferred_ctx = DeferredContext(
-                        workflow=workflow,
-                        action=action or fn.__qualname__,
-                        run_id=run_id,
-                        records=[],
-                    )
-                    deferred_token = set_deferred_context(deferred_ctx)
-
-            try:
-                return fn(*args, **kwargs)
-
-            except Exception as e:
-                subject_id = (
-                    subject_id_getter(args, kwargs)
-                    if subject_id_getter
-                    else None
-                )
-                context = context_getter(args, kwargs) if context_getter else {}
-                event = Event(
-                    level='error',
-                    summary=summary,
-                    workflow=workflow,
-                    action=action or fn.__qualname__,
-                    subject_id=subject_id,
-                    context=context,
-                    run_id=run_id,
-                )
-
-                if notifier is not None:
-                    notifier.notify(event, exc=e)
-
-                if re_raise:
-                    raise
-
-                return None
-
-            finally:
-                if outermost:
-                    # noinspection PyUnboundLocalVariable
-                    group_event = deferred_ctx.to_group_event()
-                    # noinspection PyProtectedMember
-                    notifier._send_now(
-                        group_event,
-                        exc=None,
-                        send_destinations=True,
-                    )
-                    # noinspection PyUnboundLocalVariable
-                    reset_deferred_context(deferred_token)
-
-                reset_notification_context(notify_token)
-                reset_runtime_context(rt_token)
-
-        return wrapper
-
-    return deco(_fn) if _fn else deco
+    return cap(_fn) if _fn else cap
 
 
 # alias: for people who just want a decorator and don't care about semantics.
