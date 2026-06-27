@@ -5,7 +5,6 @@ from typing import Any
 
 from ._models import (
     DeferredContext,
-    DeliveryMode,
     NotificationContext,
     Platform,
     RuntimeContext,
@@ -15,11 +14,6 @@ from ._models import (
 
 _deferred_ctx: ContextVar[DeferredContext | None] = ContextVar(
     'deferred_ctx',
-    default=None,
-)
-
-_delivery_mode_ctx: ContextVar[DeliveryMode | None] = ContextVar(
-    'shuuten_delivery_mode_ctx',
     default=None,
 )
 
@@ -43,18 +37,6 @@ def reset_deferred_context(token: Token) -> None:
 
 def get_deferred_context() -> DeferredContext | None:
     return _deferred_ctx.get()
-
-
-def set_delivery_mode(ctx: DeliveryMode | None) -> Token:
-    return _delivery_mode_ctx.set(ctx)
-
-
-def reset_delivery_mode(token: Token) -> None:
-    _delivery_mode_ctx.reset(token)
-
-
-def get_delivery_mode() -> DeliveryMode | None:
-    return _delivery_mode_ctx.get()
 
 
 def set_notification_context(ctx: NotificationContext | None) -> Token:

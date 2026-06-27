@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from ._models import Config, DeferredRecord, Event, detect_context, DeliveryMode
 from ._redact import redact
-from ._runtime import get_deferred_context, get_runtime_context, get_delivery_mode
+from ._runtime import get_deferred_context, get_runtime_context, get_notification_context
 
 if TYPE_CHECKING:
 
@@ -62,13 +62,14 @@ class Notifier:
         emit_local_log: bool | None = None,
     ) -> None:
 
-        delivery_mode = get_delivery_mode() or self._config.delivery_mode
+        if ctx := get_deferred_context():
+            ctx.records.append(DeferredRecord(event, exc=exc))
+            return
 
-        if delivery_mode is DeliveryMode.DEFERRED:
-            if ctx := get_deferred_context():
-                ctx.records.append(DeferredRecord(event, exc=exc))
-
-                return
+        notify_ctx = get_notification_context()
+        delivery_mode = (notify_ctx.delivery_mode
+                         if notify_ctx and notify_ctx.delivery_mode is not None
+                         else self._config.delivery_mode)
 
         self._send_now(
             event,

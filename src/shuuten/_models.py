@@ -335,6 +335,7 @@ class NotificationContext:
     action: str | None = None
     subject_id: str | None = None
     run_id: str | None = None
+    delivery_mode: DeliveryMode | None = None
 
 
 @dataclass(frozen=True, slots=True)

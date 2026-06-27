@@ -23,8 +23,6 @@ from ._runtime import (
     reset_runtime_context,
     set_deferred_context,
     set_notification_context,
-    set_delivery_mode,
-    reset_delivery_mode,
 )
 from .destinations import (
     MSTeamsWebhookDestination,
@@ -98,7 +96,6 @@ def init(
     *,
     formatter: type[Formatter] = ShuutenJSONFormatter,
     reset: bool = False,
-    delivery_mode: str | DeliveryMode | None = None,
 ):
     """
     auto-detect destinations via env vars
@@ -112,12 +109,7 @@ def init(
     config = Config.from_env() if config is None else config.with_env_defaults()
 
     if config.quiet_level is not None:
-        quiet_third_party_logs(cast(int, config.quiet_level))
-
-    if delivery_mode is not None:
-        if isinstance(delivery_mode, str):
-            delivery_mode = DeliveryMode(delivery_mode)
-        config.delivery_mode = delivery_mode
+        quiet_third_party_logs(config.quiet_level)
 
     ses_from = config.ses_from
     ses_to = config.ses_to
@@ -229,11 +221,18 @@ def capture(
     # mutate global config here.
     init(config)
     notifier = notifier or _NOTIFIER
+    effective_delivery_mode = (
+        DeliveryMode(delivery_mode)
+        if isinstance(delivery_mode, str)
+        else delivery_mode
+    )
 
     def deco(fn):
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            nonlocal effective_delivery_mode
+
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
             run_id = str(uuid4())
@@ -244,18 +243,9 @@ def capture(
                     workflow=workflow,
                     action=action or fn.__qualname__,
                     run_id=run_id,
+                    delivery_mode=effective_delivery_mode,
                 )
             )
-
-            effective_delivery_mode = (
-                DeliveryMode(delivery_mode)
-                if isinstance(delivery_mode, str)
-                else delivery_mode
-            )
-            if effective_delivery_mode is None and notifier is not None:
-                effective_delivery_mode = notifier.config.delivery_mode
-
-            delivery_token = set_delivery_mode(effective_delivery_mode)
 
             outermost = False
             # deferred_ctx = None
@@ -313,7 +303,6 @@ def capture(
                     # noinspection PyUnboundLocalVariable
                     reset_deferred_context(deferred_token)
 
-                reset_delivery_mode(delivery_token)
                 reset_notification_context(notify_token)
                 reset_runtime_context(rt_token)
 
