@@ -43,7 +43,7 @@ class Platform(str, Enum):
 class DeliveryMode(str, Enum):
     IMMEDIATE = 'immediate'
     DEFERRED = 'deferred'
-    LOGS_ONLY = 'logs_only'
+    LOCAL_ONLY = 'local_only'
 
 
 @dataclass(slots=True)
@@ -79,6 +79,10 @@ class Config:
 
     dedupe_window_s: float = 30.0
 
+    # Notification delivery mode (default is `IMMEDIATE`, meaning
+    # individual notifications are sent)
+    delivery_mode: DeliveryMode = DeliveryMode.IMMEDIATE
+
     def with_env_defaults(self) -> Config:
         cfg = Config.from_env()
         return cfg.overlay(self)
@@ -109,6 +113,7 @@ class Config:
 
         # Strings with defaults: always override
         out.slack_format = other.slack_format
+        out.delivery_mode = other.delivery_mode
         # Bool/Float/Int: always override
         out.min_level = other.min_level
         out.dedupe_window_s = other.dedupe_window_s
@@ -158,6 +163,11 @@ class Config:
             dedupe_window_s=parse_float(
                 os.getenv('SHUUTEN_DEDUPE_WINDOW_S'),
                 default=30.0,
+            ),
+            delivery_mode=parse_enum(
+                getenv('SHUUTEN_DELIVERY_MODE'),
+                enum=DeliveryMode,
+                default=DeliveryMode.IMMEDIATE,
             ),
         )
 

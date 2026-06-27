@@ -94,6 +94,31 @@ def handler(event, context):
     log.critical('Something went wrong')  # sent to configured destinations
 ```
 
+### Deferred delivery
+
+Use deferred delivery to collect alert-worthy logs during a captured execution
+and send one grouped notification at the end.
+
+```python
+import shuuten
+import logging
+
+shuuten.init(shuuten.Config(min_level=logging.INFO))
+
+log = shuuten.get_logger(__name__)
+
+@shuuten.capture(workflow="orders", delivery_mode="deferred")
+def handler(event, context):
+    log.info("starting order sync")
+    log.error("failed to process order", extra={"data": {"order_id": 123}})
+    1 / 0
+```
+
+Instead of sending multiple Slack, Teams, or email notifications, Shuuten sends
+one grouped notification with the captured logs, context, and exception details.
+
+> Deferred delivery applies only inside `capture()`. It does not catch Lambda hard timeouts or OOM failures.
+
 ### Manual context control (advanced)
 
 ```python
@@ -212,14 +237,15 @@ to configured destinations while preserving normal structlog output.
 
 You can configure Shuuten via `Config` in code **or** environment variables.
 
-| Variable                  | Description                                        | Default   |
-|---------------------------|----------------------------------------------------|-----------|
-| `SHUUTEN_APP`             | Application name (used for grouping/metadata)      | auto      |
-| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)  | auto      |
-| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                 | `ERROR`   |
-| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying           | `true`    |
-| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)         | `WARNING` |
-| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables | `30`      |
+| Variable                  | Description                                                   | Default     |
+|---------------------------|---------------------------------------------------------------|-------------|
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)                 | auto        |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)             | auto        |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                            | `ERROR`     |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying                      | `true`      |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)                    | `WARNING`   |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables            | `30`        |
+| `SHUUTEN_DELIVERY_MODE`   | Alert delivery mode: `immediate`, `deferred`, or `local_only` | `immediate` |
 
 ### Slack
 

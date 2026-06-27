@@ -23,6 +23,8 @@ from ._runtime import (
     reset_runtime_context,
     set_deferred_context,
     set_notification_context,
+    set_delivery_mode,
+    reset_delivery_mode,
 )
 from .destinations import (
     MSTeamsWebhookDestination,
@@ -96,6 +98,7 @@ def init(
     *,
     formatter: type[Formatter] = ShuutenJSONFormatter,
     reset: bool = False,
+    delivery_mode: str | DeliveryMode | None = None,
 ):
     """
     auto-detect destinations via env vars
@@ -110,6 +113,11 @@ def init(
 
     if config.quiet_level is not None:
         quiet_third_party_logs(cast(int, config.quiet_level))
+
+    if delivery_mode is not None:
+        if isinstance(delivery_mode, str):
+            delivery_mode = DeliveryMode(delivery_mode)
+        config.delivery_mode = delivery_mode
 
     ses_from = config.ses_from
     ses_to = config.ses_to
@@ -216,15 +224,16 @@ def capture(
 
     Summary used only if the wrapped function raises.
     """
-    init(config)  # Initialize config (or from env if config=None) if needed
+    # Initialize config (or from env if config=None) if needed.
+    # `delivery_mode` is scoped per capture invocation below; it should not
+    # mutate global config here.
+    init(config)
     notifier = notifier or _NOTIFIER
 
     def deco(fn):
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            nonlocal delivery_mode
-
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
             run_id = str(uuid4())
@@ -238,27 +247,30 @@ def capture(
                 )
             )
 
-            if delivery_mode is not None:
-                if isinstance(delivery_mode, str):
-                    delivery_mode = DeliveryMode(delivery_mode)
+            effective_delivery_mode = (
+                DeliveryMode(delivery_mode)
+                if isinstance(delivery_mode, str)
+                else delivery_mode
+            )
+            if effective_delivery_mode is None and notifier is not None:
+                effective_delivery_mode = notifier.config.delivery_mode
 
-                if delivery_mode is DeliveryMode.DEFERRED:
-                    if (deferred_ctx := get_deferred_context()) is None:
-                        deferred_ctx = DeferredContext(
-                            workflow=workflow,
-                            action=action or fn.__qualname__,
-                            run_id=run_id,
-                            records=[],
-                        )
-                        deferred_token = set_deferred_context(deferred_ctx)
-                        outermost = True
-                    else:
-                        deferred_token = None
-                        outermost = False
-                else:
-                    outermost = False
-            else:
-                outermost = False
+            delivery_token = set_delivery_mode(effective_delivery_mode)
+
+            outermost = False
+            # deferred_ctx = None
+            # deferred_token = None
+
+            if effective_delivery_mode is DeliveryMode.DEFERRED:
+                if get_deferred_context() is None:
+                    outermost = True
+                    deferred_ctx = DeferredContext(
+                        workflow=workflow,
+                        action=action or fn.__qualname__,
+                        run_id=run_id,
+                        records=[],
+                    )
+                    deferred_token = set_deferred_context(deferred_ctx)
 
             try:
                 return fn(*args, **kwargs)
@@ -290,14 +302,18 @@ def capture(
 
             finally:
                 if outermost:
+                    # noinspection PyUnboundLocalVariable
                     group_event = deferred_ctx.to_group_event()
                     # noinspection PyProtectedMember
                     notifier._send_now(
                         group_event,
                         exc=None,
+                        send_destinations=True,
                     )
+                    # noinspection PyUnboundLocalVariable
                     reset_deferred_context(deferred_token)
 
+                reset_delivery_mode(delivery_token)
                 reset_notification_context(notify_token)
                 reset_runtime_context(rt_token)
 
