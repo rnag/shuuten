@@ -219,7 +219,7 @@ def capture(
     # `delivery_mode` is scoped per capture invocation below; it should not
     # mutate global config here.
     init(config)
-    notifier = notifier or _NOTIFIER
+    notifier = notifier or _get_notifier()
 
     effective_delivery_mode = (
         DeliveryMode(delivery_mode)

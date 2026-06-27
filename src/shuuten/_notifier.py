@@ -67,7 +67,7 @@ class Notifier:
     ) -> None:
 
         if ctx := get_deferred_context():
-            ctx.records.append(DeferredRecord(event, exc=exc))
+            ctx.records.append(DeferredRecord(event=event, exc=exc))
             return
 
         notify_ctx = get_notification_context()
