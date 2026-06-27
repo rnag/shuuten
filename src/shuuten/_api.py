@@ -221,17 +221,20 @@ def capture(
     # mutate global config here.
     init(config)
     notifier = notifier or _NOTIFIER
+
     effective_delivery_mode = (
         DeliveryMode(delivery_mode)
         if isinstance(delivery_mode, str)
         else delivery_mode
     )
 
+    if effective_delivery_mode is None and notifier is not None:
+        effective_delivery_mode = notifier.config.delivery_mode
+
     def deco(fn):
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
-            nonlocal effective_delivery_mode
 
             # detect lambda context safely
             ctx_obj = args[-1] if args else None
