@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from functools import wraps
 from logging import DEBUG, Formatter, Handler, Logger, StreamHandler, getLogger
-from typing import cast
 from uuid import uuid4
 
 from ._log import LOG, quiet_third_party_logs

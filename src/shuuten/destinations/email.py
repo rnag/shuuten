@@ -204,20 +204,24 @@ def _html_body(event: Event) -> str:
                   <div style="font-size:13px;font-weight:700;color:{color};margin-bottom:6px;">
                     {i}. {h(level)}
                   </div>
-                """
+                """  # noqa: E501
             )
 
             if loc:
                 parts.append(
-                    f'<div style="font-size:12px;color:#666;margin-bottom:8px;"><code>{h(loc)}</code></div>'
+                    f'<div style="font-size:12px;color:#666;margin-bottom:8px;"><code>{h(loc)}</code></div>'  # noqa: E501
                 )
 
             if title:
-                parts.append('<div style="font-size:12px;font-weight:700;margin:8px 0;">Message</div>')
+                parts.append(
+                    '<div style="font-size:12px;font-weight:700;margin:8px 0;">Message</div>'  # noqa: E501
+                )
                 parts.append(pre_block(title))
 
             if details:
-                parts.append('<div style="font-size:12px;font-weight:700;margin:8px 0;">Context</div>')
+                parts.append(
+                    '<div style="font-size:12px;font-weight:700;margin:8px 0;">Context</div>'  # noqa: E501
+                )  # noqa: E501
                 parts.append(pre_block(_compact_json(details, limit=1500)))
 
             if traceback_text:
@@ -227,7 +231,7 @@ def _html_body(event: Event) -> str:
 
         if len(alerts) > 10:
             parts.append(
-                f'<div style="font-size:12px;color:#666;">… {len(alerts) - 10} more alerts</div>'
+                f'<div style="font-size:12px;color:#666;">… {len(alerts) - 10} more alerts</div>'  # noqa: E501
             )
 
         return ''.join(parts)

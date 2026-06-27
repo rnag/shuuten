@@ -1,5 +1,3 @@
-# src/shuuten/_destinations/_teams.py
-
 from __future__ import annotations
 
 import json
@@ -13,7 +11,6 @@ from .._formatting import (
 )
 from .._models import Event
 from .._requests import send_to_teams
-
 
 _LEVEL_META = {
     'DEBUG': ('🔎', 'accent', 'emphasis'),
@@ -81,7 +78,7 @@ def _alert_container(alert: dict) -> dict:
         items.append(
             {
                 'type': 'TextBlock',
-                'text': f'**Context**\n\n```\n{_compact_json(details, limit=1200)}\n```',
+                'text': f'**Context**\n\n```\n{_compact_json(details, limit=1200)}\n```',  # noqa: E501
                 'wrap': True,
                 'spacing': 'Small',
             }

@@ -65,18 +65,18 @@ def _json_block(
 
 def _header(event: Event, *, show_level: bool = True) -> list[dict]:
     lvl = event.level.upper()
-    emoji = _LEVEL_EMOJI.get(lvl, "🚨")
-    title = event.summary or event.message or "Shuuten alert"
+    emoji = _LEVEL_EMOJI.get(lvl, '🚨')
+    title = event.summary or event.message or 'Shuuten alert'
 
     if show_level:
-        text = f"{emoji} {lvl}: {title}"
+        text = f'{emoji} {lvl}: {title}'
     else:
-        text = f"{emoji} {title}"
+        text = f'{emoji} {title}'
 
     return [
         {
-            "type": "header",
-            "text": {"type": "plain_text", "text": text[:150], "emoji": True},
+            'type': 'header',
+            'text': {'type': 'plain_text', 'text': text[:150], 'emoji': True},
         }
     ]
 
@@ -182,7 +182,6 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
                 lines.append(f'   `{exception}`')
             else:
                 lines.append(f'   *Message*```{msg}```')
-
 
             if details and isinstance(details, dict):
                 lines.append(
