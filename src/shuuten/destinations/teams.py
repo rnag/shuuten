@@ -34,7 +34,7 @@ def _compact_json(value: object, *, limit: int = 1800) -> str:
     return text
 
 
-def _alert_container(alert: dict) -> dict:
+def _alert_container(index: int, alert: dict) -> dict:
     level = str(alert.get('level', '')).upper()
     emoji, text_color, _ = _LEVEL_META.get(level, _LEVEL_META['ERROR'])
 
@@ -46,7 +46,7 @@ def _alert_container(alert: dict) -> dict:
     items: list[dict] = [
         {
             'type': 'TextBlock',
-            'text': f'{emoji} {level}',
+            'text': f'{index} · {emoji} {level}',
             'weight': 'Bolder',
             'color': text_color,
             'wrap': True,
@@ -182,14 +182,15 @@ def teams_card_for_event(event: Event) -> dict:
                     'wrap': True,
                 }
             )
-            for alert in alerts[:10]:
-                body.append(_alert_container(alert))
+            for i, alert in enumerate(alerts[:10], start=1):
+                body.append(_alert_container(i, alert))
 
             if len(alerts) > 10:
                 body.append(
                     {
                         'type': 'TextBlock',
-                        'text': f'… {len(alerts) - 10} more alerts',
+                        'text': f'… {len(alerts) - 10} more alerts omitted. '
+                        'See logs for full details.',
                         'isSubtle': True,
                         'wrap': True,
                     }
@@ -238,21 +239,21 @@ def teams_card_for_event(event: Event) -> dict:
             }
         )
 
-    if src.get('function_url'):
+    if fn_url := src.get('function_url'):
         actions.append(
             {
                 'type': 'Action.OpenUrl',
                 'title': 'Lambda',
-                'url': src['function_url'],
+                'url': fn_url,
             }
         )
 
-    if src.get('source_code'):
+    if src_code := src.get('source_code'):
         actions.append(
             {
                 'type': 'Action.OpenUrl',
                 'title': 'Source',
-                'url': src['source_code'],
+                'url': src_code,
             }
         )
 

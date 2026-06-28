@@ -199,7 +199,10 @@ def slack_blocks_for_grouped_event(event: Event) -> list[dict]:
                 lines.append(f'```{str(traceback_text)[-1800:]}```')
 
         if len(alerts) > 10:
-            lines.append(f'… {len(alerts) - 10} more alerts')
+            lines.append(
+                f'… {len(alerts) - 10} more alerts omitted. '
+                'See logs for full details.'
+            )
 
         blocks.append(
             {

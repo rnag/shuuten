@@ -77,7 +77,10 @@ def _text_alerts(event: Event) -> list[str]:
                 lines.append(f'       {line}')
 
     if len(alerts) > 10:
-        lines.append(f'  … {len(alerts) - 10} more alerts')
+        lines.append(
+            f'  … {len(alerts) - 10} more alerts omitted. '
+            'See logs for full details.'
+        )
 
     return lines
 
@@ -231,7 +234,8 @@ def _html_body(event: Event) -> str:
 
         if len(alerts) > 10:
             parts.append(
-                f'<div style="font-size:12px;color:#666;">… {len(alerts) - 10} more alerts</div>'  # noqa: E501
+                f'<div style="font-size:12px;color:#666;">… {len(alerts) - 10} '
+                'more alerts omitted. See logs for full details.</div>'
             )
 
         return ''.join(parts)
