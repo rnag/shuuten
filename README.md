@@ -119,6 +119,21 @@ one grouped notification with the captured logs, context, and exception details.
 
 > Deferred delivery applies only inside `capture()`. It does not catch Lambda hard timeouts or OOM failures.
 
+### `capture()` as a Context Manager
+
+```python
+import logging
+import shuuten
+
+shuuten.init(shuuten.Config(min_level=logging.INFO))
+
+log = shuuten.get_logger(__name__)
+
+with shuuten.capture(workflow="orders", delivery_mode="deferred"):
+    log.info("starting order sync")
+    log.error("failed to process order", extra={"data": {"order_id": 123}})
+    1 / 0
+
 ### Manual context control (advanced)
 
 ```python
@@ -283,7 +298,6 @@ See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftt
 
 ## Roadmap
 
-* Deferred / batched alert delivery
 * AWS Lambda failure monitoring
 * PagerDuty and JSM destinations
 * Expanded ECS and EKS support

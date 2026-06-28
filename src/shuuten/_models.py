@@ -59,7 +59,7 @@ class Config:
 
     # Slack webhook
     slack_webhook_url: str | None = None
-    slack_format: SlackFormat = SlackFormat.BLOCKS
+    slack_format: SlackFormat | None = None  # Default: BLOCKS
 
     # MS Teams webhook
     teams_webhook_url: str | None = None
@@ -81,7 +81,7 @@ class Config:
 
     # Notification delivery mode (default is `IMMEDIATE`, meaning
     # individual notifications are sent)
-    delivery_mode: DeliveryMode = DeliveryMode.IMMEDIATE
+    delivery_mode: DeliveryMode | None = None
 
     def with_env_defaults(self) -> Config:
         cfg = Config.from_env()
@@ -111,9 +111,11 @@ class Config:
             if v is not None:
                 setattr(out, name, v)
 
-        # Strings with defaults: always override
-        out.slack_format = other.slack_format
-        out.delivery_mode = other.delivery_mode
+        # enum/string defaults: None => no override
+        if other.slack_format is not None:
+            out.slack_format = other.slack_format
+        if other.delivery_mode is not None:
+            out.delivery_mode = other.delivery_mode
         # Bool/Float/Int: always override
         out.min_level = other.min_level
         out.dedupe_window_s = other.dedupe_window_s
