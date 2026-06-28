@@ -5,9 +5,13 @@ from logging import Logger, getLogger
 from traceback import format_exception
 from typing import TYPE_CHECKING, Protocol
 
-from ._models import Config, Event, detect_context
+from ._models import Config, DeferredRecord, DeliveryMode, Event, detect_context
 from ._redact import redact
-from ._runtime import get_runtime_context
+from ._runtime import (
+    get_deferred_context,
+    get_notification_context,
+    get_runtime_context,
+)
 
 if TYPE_CHECKING:
 
@@ -60,6 +64,33 @@ class Notifier:
         *,
         exc: BaseException | None = None,
         emit_local_log: bool | None = None,
+    ) -> None:
+
+        if ctx := get_deferred_context():
+            ctx.records.append(DeferredRecord(event=event, exc=exc))
+            return
+
+        notify_ctx = get_notification_context()
+        delivery_mode = (
+            notify_ctx.delivery_mode
+            if notify_ctx and notify_ctx.delivery_mode is not None
+            else self._config.delivery_mode
+        )
+
+        self._send_now(
+            event,
+            exc=exc,
+            emit_local_log=emit_local_log,
+            send_destinations=delivery_mode is not DeliveryMode.LOCAL_ONLY,
+        )
+
+    def _send_now(
+        self,
+        event: Event,
+        *,
+        exc: BaseException | None = None,
+        emit_local_log: bool | None = None,
+        send_destinations: bool = True,
     ) -> None:
         # fill defaults from config
         if event.env is None:
@@ -119,10 +150,13 @@ class Notifier:
             )
 
         # 2. Destinations
-        for d in self._destinations:
-            # noinspection PyBroadException
-            try:
-                d.send(event, exc_text=exc_text)
-            except Exception:
-                # never blow up automation due to notifier failure
-                self._logger.debug('Notifier destination failed', exc_info=True)
+        if send_destinations:
+            for d in self._destinations:
+                # noinspection PyBroadException
+                try:
+                    d.send(event, exc_text=exc_text)
+                except Exception:
+                    # never blow up automation due to notifier failure
+                    self._logger.debug(
+                        'Notifier destination failed', exc_info=True
+                    )

@@ -4,11 +4,17 @@ from contextvars import ContextVar, Token
 from typing import Any
 
 from ._models import (
+    DeferredContext,
     NotificationContext,
     Platform,
     RuntimeContext,
     detect_context,
     from_lambda_context,
+)
+
+_deferred_ctx: ContextVar[DeferredContext | None] = ContextVar(
+    'deferred_ctx',
+    default=None,
 )
 
 _notification_ctx: ContextVar[NotificationContext | None] = ContextVar(
@@ -19,6 +25,18 @@ _notification_ctx: ContextVar[NotificationContext | None] = ContextVar(
 _runtime_ctx: ContextVar[RuntimeContext | None] = ContextVar(
     'shuuten_runtime_ctx', default=None
 )
+
+
+def set_deferred_context(ctx: DeferredContext | None) -> Token:
+    return _deferred_ctx.set(ctx)
+
+
+def reset_deferred_context(token: Token) -> None:
+    _deferred_ctx.reset(token)
+
+
+def get_deferred_context() -> DeferredContext | None:
+    return _deferred_ctx.get()
 
 
 def set_notification_context(ctx: NotificationContext | None) -> Token:

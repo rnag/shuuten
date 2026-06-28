@@ -6,6 +6,7 @@ from enum import Enum
 from logging import ERROR, WARNING
 from os import getenv
 from time import time
+from traceback import format_exception
 from typing import Any, Union
 from uuid import uuid4
 
@@ -39,6 +40,12 @@ class Platform(str, Enum):
     ECS = 'ecs'
 
 
+class DeliveryMode(str, Enum):
+    IMMEDIATE = 'immediate'
+    DEFERRED = 'deferred'
+    LOCAL_ONLY = 'local_only'
+
+
 @dataclass(slots=True)
 class Config:
     app: str | None = None
@@ -52,7 +59,7 @@ class Config:
 
     # Slack webhook
     slack_webhook_url: str | None = None
-    slack_format: SlackFormat = SlackFormat.BLOCKS
+    slack_format: SlackFormat | None = None  # Default: BLOCKS
 
     # MS Teams webhook
     teams_webhook_url: str | None = None
@@ -71,6 +78,10 @@ class Config:
     ses_region: str | None = None
 
     dedupe_window_s: float = 30.0
+
+    # Notification delivery mode (default is `IMMEDIATE`, meaning
+    # individual notifications are sent)
+    delivery_mode: DeliveryMode | None = None
 
     def with_env_defaults(self) -> Config:
         cfg = Config.from_env()
@@ -100,8 +111,11 @@ class Config:
             if v is not None:
                 setattr(out, name, v)
 
-        # Strings with defaults: always override
-        out.slack_format = other.slack_format
+        # enum/string defaults: None => no override
+        if other.slack_format is not None:
+            out.slack_format = other.slack_format
+        if other.delivery_mode is not None:
+            out.delivery_mode = other.delivery_mode
         # Bool/Float/Int: always override
         out.min_level = other.min_level
         out.dedupe_window_s = other.dedupe_window_s
@@ -151,6 +165,11 @@ class Config:
             dedupe_window_s=parse_float(
                 os.getenv('SHUUTEN_DEDUPE_WINDOW_S'),
                 default=30.0,
+            ),
+            delivery_mode=parse_enum(
+                getenv('SHUUTEN_DELIVERY_MODE'),
+                enum=DeliveryMode,
+                default=DeliveryMode.IMMEDIATE,
             ),
         )
 
@@ -211,11 +230,114 @@ class Event:
 
 
 @dataclass(frozen=True, slots=True)
+class DeferredContext:
+    workflow: str | None
+    action: str | None
+    run_id: str
+    records: list[DeferredRecord]
+
+    def to_group_event(self: DeferredContext) -> Event:
+        alerts = []
+        max_level = 'info'
+        has_exception = False
+
+        severity = {
+            'debug': 10,
+            'info': 20,
+            'warning': 30,
+            'error': 40,
+            'critical': 50,
+        }
+
+        for record in self.records:
+            e = record.event
+            level = e.level.lower()
+
+            if severity.get(level, 0) > severity.get(max_level, 0):
+                max_level = level
+
+            alert = {
+                'level': level,
+                'summary': e.summary,
+                'message': e.message,
+                'action': e.action,
+            }
+
+            ctx = e.context or {}
+
+            if ctx.get('logger'):
+                alert['logger'] = ctx['logger']
+            if ctx.get('file'):
+                alert['file'] = ctx['file']
+            if ctx.get('lineno'):
+                alert['lineno'] = ctx['lineno']
+            if ctx.get('func'):
+                alert['func'] = ctx['func']
+
+            details = {
+                k: v
+                for k, v in ctx.items()
+                if k not in {'app', 'logger', 'file', 'lineno', 'func'}
+            }
+            if details:
+                alert['context'] = details
+
+            if record.exc is not None:
+                has_exception = True
+                tb = ''.join(
+                    format_exception(
+                        type(record.exc), record.exc, record.exc.__traceback__
+                    )
+                )
+                alert['exception'] = (
+                    f'{type(record.exc).__name__}: {record.exc}'
+                )
+                alert['traceback'] = tb[-2500:]
+
+            alerts.append(alert)
+
+        count = len(alerts)
+        noun = 'alert' if count == 1 else 'alerts'
+
+        if has_exception:
+            level = 'error'
+            summary = f'Execution failed — {count} {noun}'
+        else:
+            level = max_level
+            summary = f'{count} {noun} captured'
+
+        return Event(
+            level=level,
+            summary=summary,
+            message=None,
+            workflow=self.workflow,
+            action=self.action,
+            run_id=self.run_id,
+            context={
+                'alerts': alerts,
+            },
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DeferredRecord:
+    event: Event
+    exc: BaseException | None = None
+
+
+# @dataclass(slots=True)
+# class AlertGroup:
+#     event: Event
+#     records: list[DeferredRecord]
+
+
+@dataclass(frozen=True, slots=True)
 class NotificationContext:
     workflow: str | None = None
     action: str | None = None
     subject_id: str | None = None
     run_id: str | None = None
+    delivery_mode: DeliveryMode | None = None
 
 
 @dataclass(frozen=True, slots=True)

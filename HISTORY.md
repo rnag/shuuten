@@ -1,5 +1,19 @@
 # History
 
+## 0.6.0 (2026-06-27)
+
+### Added
+
+- Deferred delivery mode for grouped notifications across Slack, Microsoft Teams, and Email
+- `local_only` delivery mode for local structured logs without destination notifications
+- `capture()` context manager support via `with shuuten.capture(...)`
+- `SHUUTEN_DELIVERY_MODE` configuration option
+
+### Changed
+
+- Deferred notifications now group captured logs, context, and exception details into one destination message
+- Improved grouped notification formatting across Slack, Microsoft Teams, and email
+
 ## 0.5.0 (2026-06-24)
 
 ### Added

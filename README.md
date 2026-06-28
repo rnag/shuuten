@@ -62,7 +62,7 @@ pip install shuuten             # core package (logging, Slack, Teams)
 pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
-## Usage patterns
+## Examples
 
 ### Structured logging (logging-style)
 
@@ -91,7 +91,53 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical('Something went wrong')  # sent to configured destinations
+    log.info('Here we GOoOooO!')
+    log.error('Something went wrong')  # sent to configured destinations
+```
+
+### Deferred delivery
+
+> **Deferred delivery requires `capture()`** (as a decorator or context manager) so
+> Shuuten knows when to send grouped notifications.
+> It does not catch Lambda hard timeouts or OOM failures.
+
+Use deferred delivery to collect alert-worthy logs during a captured execution
+and send one grouped notification at the end.
+
+```python
+import shuuten
+import logging
+
+shuuten.init(shuuten.Config(min_level=logging.INFO))
+
+log = shuuten.get_logger(__name__)
+
+@shuuten.capture(workflow="orders", delivery_mode="deferred")
+def handler(event, context):
+    log.info("starting order sync")
+    log.error("failed to process order", extra={"data": {"order_id": 123}})
+    1 / 0
+```
+
+Instead of sending multiple Slack, Teams, or email notifications, Shuuten sends
+one grouped notification with the captured logs, context, and exception details.
+
+### Context manager
+
+`capture()` can also be used as a context manager.
+
+```python
+import logging
+import shuuten
+
+shuuten.init(shuuten.Config(min_level=logging.INFO))
+
+log = shuuten.get_logger(__name__)
+
+with shuuten.capture(workflow="orders", delivery_mode="deferred"):
+    log.info("starting order sync")
+    log.error("failed to process order", extra={"data": {"order_id": 123}})
+    1 / 0
 ```
 
 ### Manual context control (advanced)
@@ -107,7 +153,7 @@ def handler(event, context):
         shuuten.reset_runtime_context(token)
 ```
 
-> The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
+> `capture()` also works for ECS tasks (via ECS metadata v4).
 
 ### Structured logging with `extra`
 
@@ -199,27 +245,32 @@ configure_structlog()
 log = structlog.get_logger(__name__)
 
 log.debug("logged locally")  # not sent to destinations
-log.info("sent because min_level=INFO")
+log.info("processed request")
 log.error("failed", order_id=123)
 ```
 
-That's it. Shuuten will forward events at or above `min_level`
-to configured destinations while preserving normal structlog output.
+That's it. Shuuten forwards events at or above `min_level`
+to configured destinations while preserving normal structlog
+logging and rendering.
 
 > `min_level` controls what Shuuten sends to destinations. It does not filter structlog console output.
 
 ## Configuration
 
+> `delivery_mode` can be configured globally via `Config` or
+> `SHUUTEN_DELIVERY_MODE`, and overridden per `capture()` invocation.
+
 You can configure Shuuten via `Config` in code **or** environment variables.
 
-| Variable                  | Description                                        | Default   |
-|---------------------------|----------------------------------------------------|-----------|
-| `SHUUTEN_APP`             | Application name (used for grouping/metadata)      | auto      |
-| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)  | auto      |
-| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                 | `ERROR`   |
-| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying           | `true`    |
-| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)         | `WARNING` |
-| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables | `30`      |
+| Variable                  | Description                                                   | Default     |
+|---------------------------|---------------------------------------------------------------|-------------|
+| `SHUUTEN_APP`             | Application name (used for grouping/metadata)                 | auto        |
+| `SHUUTEN_ENV`             | Environment name (`prod`, `dev`, `staging`, etc.)             | auto        |
+| `SHUUTEN_MIN_LEVEL`       | Minimum level sent to destinations                            | `ERROR`     |
+| `SHUUTEN_EMIT_LOCAL_LOG`  | Emit local structured log when notifying                      | `true`      |
+| `SHUUTEN_QUIET_LEVEL`     | Silence noisy third-party logs (e.g. boto)                    | `WARNING`   |
+| `SHUUTEN_DEDUPE_WINDOW_S` | Notification dedupe window (seconds); `0` disables            | `30`        |
+| `SHUUTEN_DELIVERY_MODE`   | Alert delivery mode: `immediate`, `deferred`, or `local_only` | `immediate` |
 
 ### Slack
 
@@ -257,7 +308,6 @@ See [Microsoft Teams Webhook Setup](https://learn.microsoft.com/en-us/microsoftt
 
 ## Roadmap
 
-* Deferred / batched alert delivery
 * AWS Lambda failure monitoring
 * PagerDuty and JSM destinations
 * Expanded ECS and EKS support
