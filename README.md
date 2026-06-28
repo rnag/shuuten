@@ -62,7 +62,7 @@ pip install shuuten             # core package (logging, Slack, Teams)
 pip install "shuuten[email]"    # + SES email support (boto3)
 ```
 
-## Usage patterns
+## Examples
 
 ### Structured logging (logging-style)
 
@@ -117,9 +117,10 @@ def handler(event, context):
 Instead of sending multiple Slack, Teams, or email notifications, Shuuten sends
 one grouped notification with the captured logs, context, and exception details.
 
-> Deferred delivery applies only inside `capture()`. It does not catch Lambda hard timeouts or OOM failures.
+> Deferred delivery only works inside both the `capture()` decorator and context manager.
+> It does not catch Lambda hard timeouts or OOM failures.
 
-### `capture()` as a Context Manager
+### Context manager
 
 ```python
 import logging
@@ -133,6 +134,7 @@ with shuuten.capture(workflow="orders", delivery_mode="deferred"):
     log.info("starting order sync")
     log.error("failed to process order", extra={"data": {"order_id": 123}})
     1 / 0
+```
 
 ### Manual context control (advanced)
 
@@ -243,12 +245,16 @@ log.info("sent because min_level=INFO")
 log.error("failed", order_id=123)
 ```
 
-That's it. Shuuten will forward events at or above `min_level`
-to configured destinations while preserving normal structlog output.
+That's it. Shuuten forwards events at or above `min_level`
+to configured destinations while preserving normal structlog
+logging and rendering.
 
 > `min_level` controls what Shuuten sends to destinations. It does not filter structlog console output.
 
 ## Configuration
+
+> `delivery_mode` can be configured globally via `Config` or
+> `SHUUTEN_DELIVERY_MODE`, and overridden per `capture()` invocation.
 
 You can configure Shuuten via `Config` in code **or** environment variables.
 
