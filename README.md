@@ -91,10 +91,14 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
-    log.critical('Something went wrong')  # sent to configured destinations
+    log.error('Something went wrong')  # sent to configured destinations
 ```
 
 ### Deferred delivery
+
+> **Deferred delivery requires `capture()`** (as a decorator or context manager) so
+> Shuuten knows when to send grouped notifications.
+> It does not catch Lambda hard timeouts or OOM failures.
 
 Use deferred delivery to collect alert-worthy logs during a captured execution
 and send one grouped notification at the end.
@@ -117,10 +121,9 @@ def handler(event, context):
 Instead of sending multiple Slack, Teams, or email notifications, Shuuten sends
 one grouped notification with the captured logs, context, and exception details.
 
-> Deferred delivery only works inside both the `capture()` decorator and context manager.
-> It does not catch Lambda hard timeouts or OOM failures.
-
 ### Context manager
+
+`capture()` can also be used as a context manager.
 
 ```python
 import logging
@@ -149,7 +152,7 @@ def handler(event, context):
         shuuten.reset_runtime_context(token)
 ```
 
-> The `capture()` decorator works for ECS tasks as well (via ECS metadata v4).
+> `capture()` also works for ECS tasks (via ECS metadata v4).
 
 ### Structured logging with `extra`
 
