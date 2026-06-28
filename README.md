@@ -91,6 +91,7 @@ log = shuuten.get_logger(__name__)
 
 @shuuten.capture(workflow='my-workflow')
 def handler(event, context):
+    log.info('Here we GOoOooO!')
     log.error('Something went wrong')  # sent to configured destinations
 ```
 
@@ -244,7 +245,7 @@ configure_structlog()
 log = structlog.get_logger(__name__)
 
 log.debug("logged locally")  # not sent to destinations
-log.info("sent because min_level=INFO")
+log.info("processed request")
 log.error("failed", order_id=123)
 ```
 

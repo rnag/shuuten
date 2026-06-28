@@ -4,7 +4,7 @@
 
 ### Added
 
-- Deferred delivery mode for grouped Slack, Microsoft Teams, and email notifications
+- Deferred delivery mode for grouped notifications across Slack, Microsoft Teams, and Email
 - `local_only` delivery mode for local structured logs without destination notifications
 - `capture()` context manager support via `with shuuten.capture(...)`
 - `SHUUTEN_DELIVERY_MODE` configuration option
