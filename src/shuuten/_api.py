@@ -204,7 +204,7 @@ def _capture_scope(
     platform: Platform = Platform.AUTO,
     summary: str = 'Automation failed',
     action: str | None = None,
-    effective_delivery_mode: DeliveryMode | None = None,
+    delivery_mode: DeliveryMode | None = None,
     notifier: Notifier,
     subject_id_getter=None,
     context_getter=None,
@@ -221,13 +221,13 @@ def _capture_scope(
             workflow=workflow,
             action=action,
             run_id=run_id,
-            delivery_mode=effective_delivery_mode,
+            delivery_mode=delivery_mode,
         )
     )
 
     outermost = False
 
-    if effective_delivery_mode is DeliveryMode.DEFERRED:
+    if delivery_mode is DeliveryMode.DEFERRED:
         if get_deferred_context() is None:
             outermost = True
             deferred_ctx = DeferredContext(
@@ -243,9 +243,7 @@ def _capture_scope(
 
     except Exception as e:
         subject_id = (
-            subject_id_getter(fn_args, fn_kwargs)
-            if subject_id_getter
-            else None
+            subject_id_getter(fn_args, fn_kwargs) if subject_id_getter else None
         )
         context = context_getter(fn_args, fn_kwargs) if context_getter else {}
         event = Event(
@@ -281,6 +279,20 @@ def _capture_scope(
 
 
 class _Capture:
+    __slots__ = (
+        'notifier',
+        'workflow',
+        'platform',
+        'summary',
+        'action',
+        'subject_id_getter',
+        'context_getter',
+        're_raise',
+        'context',
+        'delivery_mode',
+        '_cm',
+    )
+
     def __init__(
         self,
         *,
@@ -306,16 +318,14 @@ class _Capture:
         self.context_getter = context_getter
         self.re_raise = re_raise
         self.context = context
-
-        effective_delivery_mode = (
-            DeliveryMode(delivery_mode)
-            if isinstance(delivery_mode, str)
-            else delivery_mode
-        )
-        if effective_delivery_mode is None:
-            effective_delivery_mode = self.notifier.config.delivery_mode
-        self.effective_delivery_mode = effective_delivery_mode
         self._cm = None
+
+        if isinstance(delivery_mode, str):
+            self.delivery_mode = DeliveryMode(delivery_mode)
+        elif delivery_mode is not None:
+            self.delivery_mode = delivery_mode
+        else:
+            self.delivery_mode = self.notifier.config.delivery_mode
 
     def _scope(
         self,
@@ -331,7 +341,7 @@ class _Capture:
             platform=self.platform,
             summary=self.summary,
             action=action or self.action,
-            effective_delivery_mode=self.effective_delivery_mode,
+            delivery_mode=self.delivery_mode,
             notifier=self.notifier,
             subject_id_getter=self.subject_id_getter,
             context_getter=self.context_getter,
@@ -383,7 +393,8 @@ def capture(
     context=None,
 ):
     """
-    Decorator or context manager for AWS Lambda functions, ECS tasks, or local code.
+    Decorator or context manager for AWS Lambda functions,
+    ECS tasks, or local code.
 
     Captures exceptions, enriches them with runtime context, and notifies
     configured destinations. Exceptions are re-raised by default.
